@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulasi Alat Peraga Digital</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .mode-buttons { margin-bottom: 20px; }
+        .mode-buttons button { padding: 10px 20px; margin: 5px; font-size: 16px; cursor: pointer; border: 1px solid #ccc; background: #eee; border-radius: 5px; }
+        .mode-buttons button.aktif { background: #007bff; color: white; border-color: #007bff; }
+        .grid { display: grid; grid-template-columns: repeat(4, 60px); gap: 15px; justify-content: center; margin-bottom: 20px; }
+        .titik { width: 60px; height: 60px; font-size: 20px; font-weight: bold; border-radius: 50%; border: 2px solid #333; background: white; cursor: pointer; }
+        .titik.ditekan { background: #333; color: white; }
+        .lampu { width: 50px; height: 50px; border-radius: 50%; margin: 10px auto; background: gray; }
+        .lampu.hijau { background: #28a745; box-shadow: 0 0 20px #28a745; }
+        .lampu.merah { background: #dc3545; box-shadow: 0 0 20px #dc3545; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Simulasi SULING PKM-KC</h2>
+    
+    <div class="mode-buttons">
+        <button id="btnSegitiga" onclick="pilihMode('Segitiga')">Segitiga</button>
+        <button id="btnPersegi" onclick="pilihMode('Persegi')" class="aktif">Persegi</button>
+        <button id="btnPersegiPanjang" onclick="pilihMode('PersegiPanjang')">Persegi Panjang</button>
+    </div>
+
+    <!-- Papan Koordinat 4x4 -->
+    <div class="grid" id="papanGrid">
+        <!-- Titik-titik akan dimunculkan lewat JavaScript di bawah -->
+    </div>
+
+    <h3>Lampu Indikator</h3>
+    <div id="lampu" class="lampu"></div>
+    <p id="statusTeks">Pilih mode dan klik titik koordinat</p>
+</div>
+
+<script>
+    // 1. DATA KOMBINASI BENTUK (Sesuai kesepakatanmu)
+    const kombinasiPersegi = [
+        ['A','B','F','E'], ['B','C','G','F'], ['C','D','H','G'],
+        ['E','F','J','I'], ['F','G','K','J'], ['G','H','L','K'],
+        ['I','J','N','M'], ['J','K','O','N'], ['K','L','P','O']
+    ];
+    // Silakan tambahkan kombinasi Segitiga dan Persegi Panjang di sini nanti
+
+    let modeSekarang = 'Persegi';
+    let titikAktif = [];
+    const hurufGrid = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'];
+
+    // 2. MEMBUAT TOMBOL A SAMPAI P DI LAYAR
+    const papanGrid = document.getElementById('papanGrid');
+    hurufGrid.forEach(huruf => {
+        const btn = document.createElement('button');
+        btn.innerText = huruf;
+        btn.className = 'titik';
+        btn.id = 'titik_' + huruf;
+        btn.onclick = () => tekanTitik(huruf, btn);
+        papanGrid.appendChild(btn);
+    });
+
+    // 3. FUNGSI GANTI MODE
+    function pilihMode(mode) {
+        modeSekarang = mode;
+        titikAktif = []; // Reset tombol
+        document.querySelectorAll('.titik').forEach(b => b.classList.remove('ditekan'));
+        
+        document.getElementById('btnSegitiga').classList.remove('aktif');
+        document.getElementById('btnPersegi').classList.remove('aktif');
+        document.getElementById('btnPersegiPanjang').classList.remove('aktif');
+        document.getElementById('btn' + mode).classList.add('aktif');
+        cekJawaban();
+    }
+
+    // 4. FUNGSI SAAT TITIK DIKLIK
+    function tekanTitik(huruf, btn) {
+        if (titikAktif.includes(huruf)) {
+            titikAktif = titikAktif.filter(t => t !== huruf);
+            btn.classList.remove('ditekan');
+        } else {
+            titikAktif.push(huruf);
+            btn.classList.add('ditekan');
+        }
+        titikAktif.sort(); // Urutkan sesuai abjad
+        cekJawaban();
+    }
+
+    // 5. LOGIKA CEK JAWABAN (OTAKNYA)
+    function cekJawaban() {
+        const lampu = document.getElementById('lampu');
+        const status = document.getElementById('statusTeks');
+        let jawabanBenar = false;
+
+        if (titikAktif.length === 0) {
+            lampu.className = 'lampu'; // Mati
+            status.innerText = "Alat sedang kosong";
+            return;
+        }
+
+        if (modeSekarang === 'Persegi' && titikAktif.length === 4) {
+            // Cek apakah kombinasi titik yang diklik ada di daftar kombinasiPersegi
+            jawabanBenar = kombinasiPersegi.some(kombinasi => 
+                kombinasi.every(val => titikAktif.includes(val))
+            );
+        }
+        // Tambahkan else if untuk Segitiga dan PersegiPanjang nanti
+
+        if (jawabanBenar) {
+            lampu.className = 'lampu hijau';
+            status.innerText = "Benar! Bentuk sesuai.";
+        } else {
+            lampu.className = 'lampu merah';
+            status.innerText = "Salah! Kombinasi tidak sesuai.";
+        }
+    }
+</script>
+
+</body>
+</html>
