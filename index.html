@@ -8,14 +8,17 @@
         body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 20px; }
         .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
         .mode-buttons { margin-bottom: 20px; }
-        .mode-buttons button { padding: 10px 20px; margin: 5px; font-size: 16px; cursor: pointer; border: 1px solid #ccc; background: #eee; border-radius: 5px; }
-        .mode-buttons button.aktif { background: #007bff; color: white; border-color: #007bff; }
+        .mode-buttons button { padding: 10px 15px; margin: 5px; font-size: 16px; cursor: pointer; border: 1px solid #ccc; background: #eee; border-radius: 5px; transition: 0.3s; }
+        .mode-buttons button:hover { background: #ddd; }
+        .mode-buttons button.aktif { background: #007bff; color: white; border-color: #007bff; font-weight: bold; }
         .grid { display: grid; grid-template-columns: repeat(4, 60px); gap: 15px; justify-content: center; margin-bottom: 20px; }
-        .titik { width: 60px; height: 60px; font-size: 20px; font-weight: bold; border-radius: 50%; border: 2px solid #333; background: white; cursor: pointer; }
-        .titik.ditekan { background: #333; color: white; }
-        .lampu { width: 50px; height: 50px; border-radius: 50%; margin: 10px auto; background: gray; }
-        .lampu.hijau { background: #28a745; box-shadow: 0 0 20px #28a745; }
-        .lampu.merah { background: #dc3545; box-shadow: 0 0 20px #dc3545; }
+        .titik { width: 60px; height: 60px; font-size: 20px; font-weight: bold; border-radius: 50%; border: 2px solid #333; background: white; cursor: pointer; transition: 0.2s; }
+        .titik:hover { transform: scale(1.1); }
+        .titik.ditekan { background: #333; color: white; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        .lampu { width: 60px; height: 60px; border-radius: 50%; margin: 10px auto; background: #555; transition: 0.3s; }
+        .lampu.hijau { background: #28a745; box-shadow: 0 0 30px #28a745; border: 2px solid #1e7e34; }
+        .lampu.merah { background: #dc3545; box-shadow: 0 0 30px #dc3545; border: 2px solid #a71d2a; }
+        #statusTeks { font-size: 18px; font-weight: bold; margin-top: 15px; color: #333; }
     </style>
 </head>
 <body>
@@ -31,7 +34,7 @@
 
     <!-- Papan Koordinat 4x4 -->
     <div class="grid" id="papanGrid">
-        <!-- Titik-titik akan dimunculkan lewat JavaScript di bawah -->
+        <!-- Titik-titik di-generate oleh JavaScript -->
     </div>
 
     <h3>Lampu Indikator</h3>
@@ -40,19 +43,34 @@
 </div>
 
 <script>
-    // 1. DATA KOMBINASI BENTUK (Sesuai kesepakatanmu)
+    // --- 1. DATABASE 33 KOMBINASI BENTUK ---
+    const kombinasiSegitiga = [
+        ['B','E','G'], ['B','E','F'], ['B','F','G'], // Puncak B
+        ['C','F','H'], ['C','F','G'], ['C','G','H'], // Puncak C
+        ['J','M','O'], ['J','M','N'], ['J','N','O'], // Puncak J
+        ['K','N','P'], ['K','N','O'], ['K','O','P']  // Puncak K
+    ];
+
     const kombinasiPersegi = [
         ['A','B','F','E'], ['B','C','G','F'], ['C','D','H','G'],
         ['E','F','J','I'], ['F','G','K','J'], ['G','H','L','K'],
         ['I','J','N','M'], ['J','K','O','N'], ['K','L','P','O']
     ];
-    // Silakan tambahkan kombinasi Segitiga dan Persegi Panjang di sini nanti
+
+    const kombinasiPersegiPanjang = [
+        // Horizontal
+        ['A','C','G','E'], ['B','D','H','F'], ['E','G','K','I'], 
+        ['F','H','L','J'], ['I','K','O','M'], ['J','L','P','N'],
+        // Vertikal
+        ['A','B','J','I'], ['B','C','K','J'], ['C','D','L','K'],
+        ['E','F','N','M'], ['F','G','O','N'], ['G','H','P','O']
+    ];
 
     let modeSekarang = 'Persegi';
     let titikAktif = [];
     const hurufGrid = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'];
 
-    // 2. MEMBUAT TOMBOL A SAMPAI P DI LAYAR
+    // --- 2. MEMBUAT TOMBOL A SAMPAI P ---
     const papanGrid = document.getElementById('papanGrid');
     hurufGrid.forEach(huruf => {
         const btn = document.createElement('button');
@@ -63,20 +81,21 @@
         papanGrid.appendChild(btn);
     });
 
-    // 3. FUNGSI GANTI MODE
+    // --- 3. FUNGSI GANTI MODE ---
     function pilihMode(mode) {
         modeSekarang = mode;
-        titikAktif = []; // Reset tombol
+        titikAktif = []; // Reset semua tombol saat ganti mode
         document.querySelectorAll('.titik').forEach(b => b.classList.remove('ditekan'));
         
         document.getElementById('btnSegitiga').classList.remove('aktif');
         document.getElementById('btnPersegi').classList.remove('aktif');
         document.getElementById('btnPersegiPanjang').classList.remove('aktif');
         document.getElementById('btn' + mode).classList.add('aktif');
+        
         cekJawaban();
     }
 
-    // 4. FUNGSI SAAT TITIK DIKLIK
+    // --- 4. FUNGSI KLIK TITIK KOORDINAT ---
     function tekanTitik(huruf, btn) {
         if (titikAktif.includes(huruf)) {
             titikAktif = titikAktif.filter(t => t !== huruf);
@@ -85,11 +104,10 @@
             titikAktif.push(huruf);
             btn.classList.add('ditekan');
         }
-        titikAktif.sort(); // Urutkan sesuai abjad
         cekJawaban();
     }
 
-    // 5. LOGIKA CEK JAWABAN (OTAKNYA)
+    // --- 5. LOGIKA PENGECEKAN BENAR/SALAH ---
     function cekJawaban() {
         const lampu = document.getElementById('lampu');
         const status = document.getElementById('statusTeks');
@@ -97,24 +115,39 @@
 
         if (titikAktif.length === 0) {
             lampu.className = 'lampu'; // Mati
-            status.innerText = "Alat sedang kosong";
+            status.innerText = "Alat sedang kosong. Silakan letakkan bangun datar.";
+            status.style.color = "#333";
             return;
         }
 
+        // Cek Mode Persegi (Harus 4 titik)
         if (modeSekarang === 'Persegi' && titikAktif.length === 4) {
-            // Cek apakah kombinasi titik yang diklik ada di daftar kombinasiPersegi
             jawabanBenar = kombinasiPersegi.some(kombinasi => 
                 kombinasi.every(val => titikAktif.includes(val))
             );
         }
-        // Tambahkan else if untuk Segitiga dan PersegiPanjang nanti
+        // Cek Mode Segitiga (Harus 3 titik)
+        else if (modeSekarang === 'Segitiga' && titikAktif.length === 3) {
+            jawabanBenar = kombinasiSegitiga.some(kombinasi => 
+                kombinasi.every(val => titikAktif.includes(val))
+            );
+        }
+        // Cek Mode Persegi Panjang (Harus 4 titik)
+        else if (modeSekarang === 'PersegiPanjang' && titikAktif.length === 4) {
+            jawabanBenar = kombinasiPersegiPanjang.some(kombinasi => 
+                kombinasi.every(val => titikAktif.includes(val))
+            );
+        }
 
+        // Output Lampu
         if (jawabanBenar) {
             lampu.className = 'lampu hijau';
-            status.innerText = "Benar! Bentuk sesuai.";
+            status.innerText = "BENAR! Bentuk " + modeSekarang + " terdeteksi.";
+            status.style.color = "#28a745";
         } else {
             lampu.className = 'lampu merah';
-            status.innerText = "Salah! Kombinasi tidak sesuai.";
+            status.innerText = "SALAH! Kombinasi titik tidak sesuai.";
+            status.style.color = "#dc3545";
         }
     }
 </script>
