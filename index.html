@@ -1,156 +1,633 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="scroll-smooth">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulasi Alat Peraga Digital</title>
+    <title>Simulasi Alat Peraga SULING PKM-KC</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'neon-blue': '0 0 20px rgba(99, 102, 241, 0.5)',
+                        'neon-indigo': '0 0 25px rgba(79, 70, 229, 0.4)',
+                        'neon-green': '0 0 35px rgba(16, 185, 129, 0.6)',
+                        'neon-red': '0 0 35px rgba(239, 68, 68, 0.6)',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- GSAP CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <!-- AOS CDN (Animate on Scroll) -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 20px; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-        .mode-buttons { margin-bottom: 20px; }
-        .mode-buttons button { padding: 10px 15px; margin: 5px; font-size: 16px; cursor: pointer; border: 1px solid #ccc; background: #eee; border-radius: 5px; transition: 0.3s; }
-        .mode-buttons button:hover { background: #ddd; }
-        .mode-buttons button.aktif { background: #007bff; color: white; border-color: #007bff; font-weight: bold; }
-        .grid { display: grid; grid-template-columns: repeat(4, 60px); gap: 15px; justify-content: center; margin-bottom: 20px; }
-        .titik { width: 60px; height: 60px; font-size: 20px; font-weight: bold; border-radius: 50%; border: 2px solid #333; background: white; cursor: pointer; transition: 0.2s; }
-        .titik:hover { transform: scale(1.1); }
-        .titik.ditekan { background: #333; color: white; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-        .lampu { width: 60px; height: 60px; border-radius: 50%; margin: 10px auto; background: #555; transition: 0.3s; }
-        .lampu.hijau { background: #28a745; box-shadow: 0 0 30px #28a745; border: 2px solid #1e7e34; }
-        .lampu.merah { background: #dc3545; box-shadow: 0 0 30px #dc3545; border: 2px solid #a71d2a; }
-        #statusTeks { font-size: 18px; font-weight: bold; margin-top: 15px; color: #333; }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transform-style: preserve-3d;
+            will-change: transform;
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.35);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-card:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            box-shadow: 0 15px 30px -10px rgba(99, 102, 241, 0.25);
+            transform: translateY(-6px);
+        }
+
+        /* 3D Keycap Push Styles for Papan Grid Coordinates */
+        .titik {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 0 0 #020617, 0 8px 16px rgba(0, 0, 0, 0.5);
+            transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            will-change: transform, box-shadow;
+        }
+
+        .titik:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 6px 0 0 #020617, 0 12px 24px rgba(99, 102, 241, 0.2);
+            border-color: rgba(99, 102, 241, 0.4);
+        }
+
+        .titik:active {
+            transform: translateY(-1px);
+            box-shadow: 0 1px 0 0 #020617, 0 4px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Keep the exact original class bindings intact to ensure game logic does not break */
+        .titik.ditekan {
+            transform: translateY(0px) !important;
+            box-shadow: 0 0px 0 0 #020617, 0 0 25px rgba(99, 102, 241, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.2) !important;
+            background-color: rgb(79, 70, 229) !important;
+            color: #ffffff !important;
+            border-color: rgb(165, 180, 252) !important;
+        }
+
+        .mode-buttons button.aktif {
+            background-color: rgb(79, 70, 229) !important;
+            color: #ffffff !important;
+            border-color: rgb(165, 180, 252) !important;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.4) !important;
+            font-weight: 600 !important;
+        }
+
+        .lampu {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 20px auto;
+            background: radial-gradient(circle at 35% 35%, #4b5563 0%, #1f2937 80%);
+            box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(255, 255, 255, 0.05);
+            border: 4px solid #374151;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .lampu.hijau {
+            background: radial-gradient(circle at 35% 35%, #34d399 0%, #059669 80%);
+            box-shadow: inset 0 4px 6px rgba(255, 255, 255, 0.4), 0 0 35px #10b981;
+            border-color: #34d399;
+        }
+
+        .lampu.merah {
+            background: radial-gradient(circle at 35% 35%, #f87171 0%, #dc2626 80%);
+            box-shadow: inset 0 4px 6px rgba(255, 255, 255, 0.4), 0 0 35px #ef4444;
+            border-color: #f87171;
+        }
     </style>
 </head>
-<body>
 
-<div class="container">
-    <h2>Simulasi SULING PKM-KC</h2>
-    
-    <div class="mode-buttons">
-        <button id="btnSegitiga" onclick="pilihMode('Segitiga')">Segitiga</button>
-        <button id="btnPersegi" onclick="pilihMode('Persegi')" class="aktif">Persegi</button>
-        <button id="btnPersegiPanjang" onclick="pilihMode('PersegiPanjang')">Persegi Panjang</button>
+<body class="bg-slate-950 text-slate-100 min-h-screen relative overflow-x-hidden font-sans pb-16">
+
+    <!-- Ambient background glows -->
+    <div
+        class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none">
+    </div>
+    <div
+        class="absolute top-[40%] right-[-10%] w-[45%] h-[45%] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none">
+    </div>
+    <div
+        class="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] bg-violet-600/10 rounded-full blur-[120px] pointer-events-none">
     </div>
 
-    <!-- Papan Koordinat 4x4 -->
-    <div class="grid" id="papanGrid">
-        <!-- Titik-titik di-generate oleh JavaScript -->
+    <!-- ============================================ -->
+    <!-- SECTION 1: LANDING PAGE                      -->
+    <!-- ============================================ -->
+    <div id="landing-page" class="w-full flex flex-col items-center">
+        <!-- Hero / Jumbotron -->
+        <section class="max-w-5xl mx-auto px-6 pt-16 pb-12 md:pt-24 md:pb-16 text-center flex flex-col items-center">
+            <span data-aos="fade-down" data-aos-duration="600"
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold tracking-wider uppercase text-indigo-400 bg-indigo-950/50 border border-indigo-800/40 mb-6 shadow-inner">
+                <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+                Alat Peraga Digital
+            </span>
+
+            <h1 data-aos="zoom-in" data-aos-duration="800"
+                class="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-6">
+                Simulasi <span
+                    class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-violet-400 to-indigo-500">SULING
+                    PKM-KC</span>
+            </h1>
+
+            <p data-aos="fade-up" data-aos-delay="100"
+                class="text-lg md:text-xl text-slate-400 max-w-3xl leading-relaxed mb-10 font-normal">
+                Media pembelajaran interaktif pendeteksi koordinat bangun datar otomatis berbasis grid 4x4.
+                Dirancang untuk memudahkan visualisasi konsep geometri secara digital, presisi, dan intuitif.
+            </p>
+
+            <button data-aos="fade-up" data-aos-delay="200" data-aos-duration="600" onclick="bukaGame()"
+                class="group relative px-8 py-4 font-bold text-lg text-white rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 transition duration-300 shadow-lg shadow-indigo-600/35 overflow-hidden cursor-pointer select-none">
+                <span
+                    class="absolute inset-0 w-full h-full bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                <span class="flex items-center justify-center gap-2">
+                    Mulai Bermain
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5"
+                        stroke="currentColor"
+                        class="w-5 h-5 transform group-hover:translate-x-1.5 transition-transform duration-300">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                </span>
+            </button>
+        </section>
+
+        <!-- Divider line -->
+        <div class="w-full max-w-5xl px-6" data-aos="fade-in" data-aos-delay="300">
+            <hr class="border-slate-800/60 my-6">
+        </div>
+
+        <!-- Group Members Section -->
+        <section class="w-full max-w-5xl mx-auto px-6 py-8">
+            <div class="text-center mb-10" data-aos="fade-up" data-aos-delay="100">
+                <h2 class="text-2xl md:text-3xl font-bold text-white mb-3">Kelompok Miko Nur Waluyo</h2>
+                <p class="text-slate-400 text-sm md:text-base">Mahasiswa pengembang alat peraga digital SULING PKM-KC
+                </p>
+            </div>
+
+            <!-- Members Grid (ordered exactly as requested) -->
+            <div class="grid grid-cols-1 gap-4 max-w-md mx-auto">
+                <!-- Member 1 -->
+                <div data-aos="fade-up" data-aos-delay="100" class="glass-card p-5 rounded-2xl flex items-center gap-4">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                            stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-white text-base">Adinda Putri Maeky Yuda</h3>
+                        <p class="text-xs text-indigo-400/90 font-medium tracking-wide mt-0.5">NIM: 250210101088</p>
+                    </div>
+                </div>
+
+                <!-- Member 2 -->
+                <div data-aos="fade-up" data-aos-delay="150" class="glass-card p-5 rounded-2xl flex items-center gap-4">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                            stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-white text-base">Erika Windi Cahyaningrum</h3>
+                        <p class="text-xs text-indigo-400/90 font-medium tracking-wide mt-0.5">NIM: 250210101092</p>
+                    </div>
+                </div>
+
+                <!-- Member 3 -->
+                <div data-aos="fade-up" data-aos-delay="200" class="glass-card p-5 rounded-2xl flex items-center gap-4">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                            stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-white text-base">Jatmika Nur Widayat</h3>
+                        <p class="text-xs text-indigo-400/90 font-medium tracking-wide mt-0.5">NIM: 250210101096</p>
+                    </div>
+                </div>
+
+                <!-- Member 4 -->
+                <div data-aos="fade-up" data-aos-delay="250" class="glass-card p-5 rounded-2xl flex items-center gap-4">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                            stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-white text-base">Aulia Fajrina</h3>
+                        <p class="text-xs text-indigo-400/90 font-medium tracking-wide mt-0.5">NIM: 250210101102</p>
+                    </div>
+                </div>
+
+                <!-- Member 5 -->
+                <div data-aos="fade-up" data-aos-delay="300" class="glass-card p-5 rounded-2xl flex items-center gap-4">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                            stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-white text-base">Rusita Adelia Sari</h3>
+                        <p class="text-xs text-indigo-400/90 font-medium tracking-wide mt-0.5">NIM: 250210101103</p>
+                    </div>
+                </div>
+
+                <!-- Member 6 -->
+                <div data-aos="fade-up" data-aos-delay="350" class="glass-card p-5 rounded-2xl flex items-center gap-4">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                            stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-white text-base">Siti Afkarina Azizah</h3>
+                        <p class="text-xs text-indigo-400/90 font-medium tracking-wide mt-0.5">NIM: 250210101111</p>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 
-    <h3>Lampu Indikator</h3>
-    <div id="lampu" class="lampu"></div>
-    <p id="statusTeks">Pilih mode dan klik titik koordinat</p>
-</div>
+    <!-- ============================================ -->
+    <!-- SECTION 2: GAME SIMULATION (HIDDEN INITIALLY)-->
+    <!-- ============================================ -->
+    <div id="game-page" class="w-full max-w-4xl mx-auto px-6 pt-8 hidden opacity-0">
+        <!-- Back Button -->
+        <button onclick="kembaliKeDepan()"
+            class="group inline-flex items-center gap-2 text-slate-400 hover:text-white transition duration-300 font-medium cursor-pointer mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5"
+                stroke="currentColor"
+                class="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-300">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+            Kembali
+        </button>
 
-<script>
-    // --- 1. DATABASE 33 KOMBINASI BENTUK ---
-    const kombinasiSegitiga = [
-        ['B','E','G'], ['B','E','F'], ['B','F','G'], // Puncak B
-        ['C','F','H'], ['C','F','G'], ['C','G','H'], // Puncak C
-        ['J','M','O'], ['J','M','N'], ['J','N','O'], // Puncak J
-        ['K','N','P'], ['K','N','O'], ['K','O','P']  // Puncak K
-    ];
+        <!-- 3D Tilting Panel -->
+        <div id="game-container-panel"
+            class="glass-panel p-8 md:p-10 rounded-3xl shadow-2xl relative overflow-hidden group">
+            <!-- Glare / Sheen effect for 3D realism -->
+            <div class="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 pointer-events-none transition-opacity duration-300 opacity-0 z-10"
+                id="card-glare"></div>
 
-    const kombinasiPersegi = [
-        ['A','B','F','E'], ['B','C','G','F'], ['C','D','H','G'],
-        ['E','F','J','I'], ['F','G','K','J'], ['G','H','L','K'],
-        ['I','J','N','M'], ['J','K','O','N'], ['K','L','P','O']
-    ];
+            <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-600/10 rounded-full blur-2xl pointer-events-none">
+            </div>
 
-    const kombinasiPersegiPanjang = [
-        // Horizontal
-        ['A','C','G','E'], ['B','D','H','F'], ['E','G','K','I'], 
-        ['F','H','L','J'], ['I','K','O','M'], ['J','L','P','N'],
-        // Vertikal
-        ['A','B','J','I'], ['B','C','K','J'], ['C','D','L','K'],
-        ['E','F','N','M'], ['F','G','O','N'], ['G','H','P','O']
-    ];
+            <div class="text-center mb-8 relative z-20">
+                <h2 class="text-3xl font-extrabold tracking-tight text-white mb-2">Simulasi SULING PKM-KC</h2>
+                <p class="text-slate-400 text-sm">Pilih mode dan letakkan koordinat pada papan grid</p>
+            </div>
 
-    let modeSekarang = 'Persegi';
-    let titikAktif = [];
-    const hurufGrid = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'];
+            <!-- Mode Selection Tabs -->
+            <div class="mode-buttons flex flex-wrap gap-2.5 justify-center mb-8 relative z-20">
+                <button id="btnSegitiga" onclick="pilihMode('Segitiga')"
+                    class="px-5 py-2.5 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white hover:bg-slate-800 transition duration-300 font-medium cursor-pointer select-none">Segitiga</button>
+                <button id="btnPersegi" onclick="pilihMode('Persegi')"
+                    class="px-5 py-2.5 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white hover:bg-slate-800 transition duration-300 font-medium cursor-pointer aktif select-none">Persegi</button>
+                <button id="btnPersegiPanjang" onclick="pilihMode('PersegiPanjang')"
+                    class="px-5 py-2.5 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white hover:bg-slate-800 transition duration-300 font-medium cursor-pointer select-none">Persegi
+                    Panjang</button>
+            </div>
 
-    // --- 2. MEMBUAT TOMBOL A SAMPAI P ---
-    const papanGrid = document.getElementById('papanGrid');
-    hurufGrid.forEach(huruf => {
-        const btn = document.createElement('button');
-        btn.innerText = huruf;
-        btn.className = 'titik';
-        btn.id = 'titik_' + huruf;
-        btn.onclick = () => tekanTitik(huruf, btn);
-        papanGrid.appendChild(btn);
-    });
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center relative z-20">
+                <!-- Left: 4x4 Coordinate Board Grid -->
+                <div class="flex flex-col items-center">
+                    <div class="inline-grid grid-cols-4 gap-4 p-5 rounded-2xl bg-slate-900/40 border border-slate-800/80 shadow-inner"
+                        id="papanGrid">
+                        <!-- Points A to P will be generated by JavaScript -->
+                    </div>
 
-    // --- 3. FUNGSI GANTI MODE ---
-    function pilihMode(mode) {
-        modeSekarang = mode;
-        titikAktif = []; // Reset semua tombol saat ganti mode
-        document.querySelectorAll('.titik').forEach(b => b.classList.remove('ditekan'));
-        
-        document.getElementById('btnSegitiga').classList.remove('aktif');
-        document.getElementById('btnPersegi').classList.remove('aktif');
-        document.getElementById('btnPersegiPanjang').classList.remove('aktif');
-        document.getElementById('btn' + mode).classList.add('aktif');
-        
-        cekJawaban();
-    }
+                    <!-- Reset Coordinates Button -->
+                    <button id="btnReset" onclick="resetKoordinat()"
+                        class="mt-6 px-6 py-2.5 rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-900/50 hover:bg-slate-800 text-slate-400 hover:text-white transition duration-300 font-medium cursor-pointer select-none flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                            stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        Reset Papan
+                    </button>
+                </div>
 
-    // --- 4. FUNGSI KLIK TITIK KOORDINAT ---
-    function tekanTitik(huruf, btn) {
-        if (titikAktif.includes(huruf)) {
-            titikAktif = titikAktif.filter(t => t !== huruf);
-            btn.classList.remove('ditekan');
-        } else {
-            titikAktif.push(huruf);
-            btn.classList.add('ditekan');
+                <!-- Right: Indicator Panel -->
+                <div
+                    class="flex flex-col items-center justify-center p-6 rounded-2xl bg-slate-900/30 border border-slate-850 h-full min-h-[250px]">
+                    <h3 class="text-sm font-semibold tracking-wider text-slate-500 uppercase mb-4">Lampu Indikator</h3>
+
+                    <!-- Glow Lamp -->
+                    <div id="lampu" class="lampu"></div>
+
+                    <!-- Status message text box -->
+                    <div class="min-h-[60px] flex items-center justify-center w-full px-4 mt-4">
+                        <p id="statusTeks"
+                            class="text-slate-400 font-medium text-center transition-colors duration-300">
+                            Alat sedang kosong. Silakan letakkan bangun datar.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- JAVASCRIPT LOGIC                             -->
+    <!-- ============================================ -->
+    <script>
+        // --- 1. DATABASE 33 KOMBINASI BENTUK ---
+        // (LOGIC IS PRESERVED EXACTLY AS ORIGINAL)
+        const kombinasiSegitiga = [
+            ['B', 'E', 'G'], ['B', 'E', 'F'], ['B', 'F', 'G'], // Puncak B
+            ['C', 'F', 'H'], ['C', 'F', 'G'], ['C', 'G', 'H'], // Puncak C
+            ['J', 'M', 'O'], ['J', 'M', 'N'], ['J', 'N', 'O'], // Puncak J
+            ['K', 'N', 'P'], ['K', 'N', 'O'], ['K', 'O', 'P']  // Puncak K
+        ];
+
+        const kombinasiPersegi = [
+            ['A', 'B', 'F', 'E'], ['B', 'C', 'G', 'F'], ['C', 'D', 'H', 'G'],
+            ['E', 'F', 'J', 'I'], ['F', 'G', 'K', 'J'], ['G', 'H', 'L', 'K'],
+            ['I', 'J', 'N', 'M'], ['J', 'K', 'O', 'N'], ['K', 'L', 'P', 'O']
+        ];
+
+        const kombinasiPersegiPanjang = [
+            // Horizontal
+            ['A', 'C', 'G', 'E'], ['B', 'D', 'H', 'F'], ['E', 'G', 'K', 'I'],
+            ['F', 'H', 'L', 'J'], ['I', 'K', 'O', 'M'], ['J', 'L', 'P', 'N'],
+            // Vertikal
+            ['A', 'B', 'J', 'I'], ['B', 'C', 'K', 'J'], ['C', 'D', 'L', 'K'],
+            ['E', 'F', 'N', 'M'], ['F', 'G', 'O', 'N'], ['G', 'H', 'P', 'O']
+        ];
+
+        let modeSekarang = 'Persegi';
+        let titikAktif = [];
+        const hurufGrid = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
+
+        // --- 2. MEMBUAT TOMBOL A SAMPAI P ---
+        const papanGrid = document.getElementById('papanGrid');
+        hurufGrid.forEach(huruf => {
+            const btn = document.createElement('button');
+            btn.innerText = huruf;
+            btn.className = 'titik w-12 h-12 sm:w-14 sm:h-14 font-bold text-lg rounded-xl border border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-900 hover:border-slate-700 transition duration-150 flex items-center justify-center cursor-pointer select-none';
+            btn.id = 'titik_' + huruf;
+            btn.onclick = () => tekanTitik(huruf, btn);
+            papanGrid.appendChild(btn);
+        });
+
+        // --- 3. FUNGSI GANTI MODE ---
+        function pilihMode(mode) {
+            modeSekarang = mode;
+            titikAktif = []; // Reset semua tombol saat ganti mode
+            document.querySelectorAll('.titik').forEach(b => b.classList.remove('ditekan'));
+
+            document.getElementById('btnSegitiga').classList.remove('aktif');
+            document.getElementById('btnPersegi').classList.remove('aktif');
+            document.getElementById('btnPersegiPanjang').classList.remove('aktif');
+            document.getElementById('btn' + mode).classList.add('aktif');
+
+            cekJawaban();
         }
-        cekJawaban();
-    }
 
-    // --- 5. LOGIKA PENGECEKAN BENAR/SALAH ---
-    function cekJawaban() {
-        const lampu = document.getElementById('lampu');
-        const status = document.getElementById('statusTeks');
-        let jawabanBenar = false;
+        // --- 4. FUNGSI KLIK TITIK KOORDINAT ---
+        function tekanTitik(huruf, btn) {
+            if (titikAktif.includes(huruf)) {
+                titikAktif = titikAktif.filter(t => t !== huruf);
+                btn.classList.remove('ditekan');
+            } else {
+                titikAktif.push(huruf);
+                btn.classList.add('ditekan');
+            }
 
-        if (titikAktif.length === 0) {
-            lampu.className = 'lampu'; // Mati
-            status.innerText = "Alat sedang kosong. Silakan letakkan bangun datar.";
-            status.style.color = "#333";
-            return;
+            // GSAP micro-animation scale-down bounce on click
+            gsap.fromTo(btn, { scale: 0.85 }, { scale: 1, duration: 0.35, ease: "elastic.out(1, 0.4)" });
+
+            cekJawaban();
         }
 
-        // Cek Mode Persegi (Harus 4 titik)
-        if (modeSekarang === 'Persegi' && titikAktif.length === 4) {
-            jawabanBenar = kombinasiPersegi.some(kombinasi => 
-                kombinasi.every(val => titikAktif.includes(val))
-            );
-        }
-        // Cek Mode Segitiga (Harus 3 titik)
-        else if (modeSekarang === 'Segitiga' && titikAktif.length === 3) {
-            jawabanBenar = kombinasiSegitiga.some(kombinasi => 
-                kombinasi.every(val => titikAktif.includes(val))
-            );
-        }
-        // Cek Mode Persegi Panjang (Harus 4 titik)
-        else if (modeSekarang === 'PersegiPanjang' && titikAktif.length === 4) {
-            jawabanBenar = kombinasiPersegiPanjang.some(kombinasi => 
-                kombinasi.every(val => titikAktif.includes(val))
-            );
+        // --- 5. RESET KOORDINAT FUNGSI (BARU) ---
+        function resetKoordinat() {
+            titikAktif = [];
+            document.querySelectorAll('.titik').forEach(b => b.classList.remove('ditekan'));
+
+            // Animate reset button
+            const btnReset = document.getElementById('btnReset');
+            gsap.fromTo(btnReset, { scale: 0.9, rotation: 0 }, { scale: 1, rotation: 360, duration: 0.45, ease: "back.out(1.5)" });
+
+            cekJawaban();
         }
 
-        // Output Lampu
-        if (jawabanBenar) {
-            lampu.className = 'lampu hijau';
-            status.innerText = "BENAR! Bentuk " + modeSekarang + " terdeteksi.";
-            status.style.color = "#28a745";
-        } else {
-            lampu.className = 'lampu merah';
-            status.innerText = "SALAH! Kombinasi titik tidak sesuai.";
-            status.style.color = "#dc3545";
+        // Format nama mode untuk teks user-friendly
+        function formatModeName(mode) {
+            if (mode === 'PersegiPanjang') return 'Persegi Panjang';
+            return mode;
         }
-    }
-</script>
 
+        // --- 6. LOGIKA PENGECEKAN BENAR/SALAH ---
+        // (LOGIC STRUCTURE AND CORE EVALUATION IS PRESERVED EXACTLY AS ORIGINAL)
+        function cekJawaban() {
+            const lampu = document.getElementById('lampu');
+            const status = document.getElementById('statusTeks');
+            let jawabanBenar = false;
+
+            if (titikAktif.length === 0) {
+                lampu.className = 'lampu'; // Mati
+                status.innerText = "Alat sedang kosong. Silakan letakkan bangun datar.";
+                status.className = "text-slate-400 font-medium text-center transition-colors duration-300";
+                return;
+            }
+
+            // Cek Mode Persegi (Harus 4 titik)
+            if (modeSekarang === 'Persegi' && titikAktif.length === 4) {
+                jawabanBenar = kombinasiPersegi.some(kombinasi =>
+                    kombinasi.every(val => titikAktif.includes(val))
+                );
+            }
+            // Cek Mode Segitiga (Harus 3 titik)
+            else if (modeSekarang === 'Segitiga' && titikAktif.length === 3) {
+                jawabanBenar = kombinasiSegitiga.some(kombinasi =>
+                    kombinasi.every(val => titikAktif.includes(val))
+                );
+            }
+            // Cek Mode Persegi Panjang (Harus 4 titik)
+            else if (modeSekarang === 'PersegiPanjang' && titikAktif.length === 4) {
+                jawabanBenar = kombinasiPersegiPanjang.some(kombinasi =>
+                    kombinasi.every(val => titikAktif.includes(val))
+                );
+            }
+
+            // Output Lampu & Animasi Interaktif GSAP
+            if (jawabanBenar) {
+                lampu.className = 'lampu hijau';
+                status.innerText = "BENAR! Bentuk " + formatModeName(modeSekarang) + " terdeteksi.";
+                status.className = "text-emerald-400 font-bold text-center text-lg drop-shadow-[0_0_10px_rgba(16,185,129,0.35)] transition-colors duration-300";
+
+                // Pulsing Green Glow
+                gsap.fromTo(lampu,
+                    { scale: 0.95, boxShadow: "inset 0 4px 6px rgba(255, 255, 255, 0.4), 0 0 10px #10b981" },
+                    { scale: 1.15, boxShadow: "inset 0 4px 6px rgba(255, 255, 255, 0.5), 0 0 45px #10b981", duration: 0.25, yoyo: true, repeat: 1, ease: "back.out(2)" }
+                );
+            } else {
+                lampu.className = 'lampu merah';
+                status.innerText = "SALAH! Kombinasi titik tidak sesuai.";
+                status.className = "text-rose-400 font-semibold text-center text-base drop-shadow-[0_0_10px_rgba(239,68,68,0.3)] transition-colors duration-300";
+
+                // Shaking Red Vibration
+                gsap.fromTo(lampu,
+                    { x: -8 },
+                    {
+                        x: 8, duration: 0.05, repeat: 5, yoyo: true, ease: "sine.inOut", onComplete: () => {
+                            gsap.set(lampu, { x: 0 });
+                        }
+                    }
+                );
+            }
+        }
+
+        // --- 7. GSAP PAGE TRANSITIONS (BARU) ---
+        function bukaGame() {
+            gsap.to("#landing-page", {
+                opacity: 0,
+                y: -40,
+                duration: 0.45,
+                ease: "power2.inOut",
+                onComplete: () => {
+                    document.getElementById("landing-page").classList.add("hidden");
+                    const gamePage = document.getElementById("game-page");
+                    gamePage.classList.remove("hidden");
+
+                    // Reset game state on opening
+                    pilihMode(modeSekarang);
+
+                    // Slide up and fade in game page elements
+                    gsap.fromTo("#game-page",
+                        { opacity: 0, y: 40 },
+                        { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }
+                    );
+
+                    // Intro animation for coord points
+                    gsap.fromTo(".titik",
+                        { scale: 0, opacity: 0 },
+                        { scale: 1, opacity: 1, duration: 0.5, stagger: 0.015, ease: "back.out(1.4)" }
+                    );
+                }
+            });
+        }
+
+        function kembaliKeDepan() {
+            gsap.to("#game-page", {
+                opacity: 0,
+                y: 40,
+                duration: 0.45,
+                ease: "power2.inOut",
+                onComplete: () => {
+                    document.getElementById("game-page").classList.add("hidden");
+                    const landingPage = document.getElementById("landing-page");
+                    landingPage.classList.remove("hidden");
+
+                    // Slide down and fade in landing page
+                    gsap.fromTo("#landing-page",
+                        { opacity: 0, y: -40 },
+                        {
+                            opacity: 1, y: 0, duration: 0.6, ease: "power3.out", onComplete: () => {
+                                AOS.refresh();
+                            }
+                        }
+                    );
+                }
+            });
+        }
+
+        // --- 8. 3D TILT EFFECT FOR GAME CONTAINER (BARU) ---
+        const gamePanel = document.getElementById('game-container-panel');
+        const cardGlare = document.getElementById('card-glare');
+
+        gamePanel.addEventListener('mousemove', (e) => {
+            const rect = gamePanel.getBoundingClientRect();
+            const x = e.clientX - rect.left - rect.width / 2;
+            const y = e.clientY - rect.top - rect.height / 2;
+
+            // Max tilt angle (5 degrees)
+            const tiltX = (y / (rect.height / 2)) * -5;
+            const tiltY = (x / (rect.width / 2)) * 5;
+
+            gsap.to(gamePanel, {
+                rotateX: tiltX,
+                rotateY: tiltY,
+                transformPerspective: 1200,
+                ease: "power2.out",
+                duration: 0.35
+            });
+
+            // Calculate angle for glare sheen
+            const angle = Math.atan2(y, x) * (180 / Math.PI);
+            gsap.to(cardGlare, {
+                opacity: 1,
+                background: `linear-gradient(${angle}deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 65%)`,
+                duration: 0.2
+            });
+        });
+
+        gamePanel.addEventListener('mouseleave', () => {
+            gsap.to(gamePanel, {
+                rotateX: 0,
+                rotateY: 0,
+                transformPerspective: 1200,
+                ease: "power2.out",
+                duration: 0.6
+            });
+
+            gsap.to(cardGlare, {
+                opacity: 0,
+                duration: 0.4
+            });
+        });
+    </script>
+
+    <!-- AOS JS (Animate on Scroll) -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init({
+            duration: 800,
+            once: true,
+            mirror: false
+        });
+    </script>
 </body>
+
 </html>
