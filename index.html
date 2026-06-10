@@ -5,12 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simulasi Alat Peraga "PAMANKU"</title>
-    <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -29,9 +27,7 @@
             }
         }
     </script>
-    <!-- GSAP CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <!-- AOS CDN (Animate on Scroll) -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
 
     <style>
@@ -128,13 +124,9 @@
 
 <body class="bg-slate-950 text-slate-100 min-h-screen relative overflow-x-hidden font-sans pb-16">
 
-    <!-- Fixed Background System: Space Starfield + Grid + Glows -->
     <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <!-- Space Starfield Animation -->
         <canvas id="space-canvas" class="absolute inset-0 w-full h-full opacity-40"></canvas>
-        <!-- Grid pattern -->
         <div class="absolute inset-0 bg-grid-pattern opacity-60"></div>
-        <!-- Ambient background glows -->
         <div id="ambient-1"
             class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/10 rounded-full blur-[120px]"></div>
         <div id="ambient-2"
@@ -143,11 +135,7 @@
             class="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] bg-violet-600/10 rounded-full blur-[120px]"></div>
     </div>
 
-    <!-- ============================================ -->
-    <!-- SECTION 1: LANDING PAGE                      -->
-    <!-- ============================================ -->
     <div id="landing-page" class="w-full flex flex-col items-center">
-        <!-- Hero / Jumbotron -->
         <section class="max-w-5xl mx-auto px-6 pt-16 pb-12 md:pt-24 md:pb-16 text-center flex flex-col items-center">
             <span data-aos="fade-down" data-aos-duration="600"
                 class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold tracking-wider uppercase text-indigo-400 bg-indigo-950/50 border border-indigo-800/40 mb-6 shadow-inner">
@@ -183,12 +171,10 @@
             </button>
         </section>
 
-        <!-- Divider line -->
         <div class="w-full max-w-5xl px-6" data-aos="fade-in" data-aos-delay="300">
             <hr class="border-slate-800/60 my-6">
         </div>
 
-        <!-- Group Members Section -->
         <section class="w-full max-w-5xl mx-auto px-6 py-8">
             <div class="text-center mb-10" data-aos="fade-up" data-aos-delay="100">
                 <h2 class="text-2xl md:text-3xl font-bold text-white mb-3">Kelompok 5</h2>
@@ -196,9 +182,7 @@
                 </p>
             </div>
 
-            <!-- Members Grid (ordered exactly as requested) -->
             <div class="grid grid-cols-1 gap-4 max-w-md mx-auto">
-                <!-- Member 1 -->
                 <div data-aos="fade-up" data-aos-delay="100" class="glass-card p-5 rounded-2xl flex items-center gap-4">
                     <div
                         class="w-12 h-12 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
@@ -214,7 +198,6 @@
                     </div>
                 </div>
 
-                <!-- Member 2 -->
                 <div data-aos="fade-up" data-aos-delay="150" class="glass-card p-5 rounded-2xl flex items-center gap-4">
                     <div
                         class="w-12 h-12 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
@@ -230,7 +213,6 @@
                     </div>
                 </div>
 
-                <!-- Member 3 -->
                 <div data-aos="fade-up" data-aos-delay="200" class="glass-card p-5 rounded-2xl flex items-center gap-4">
                     <div
                         class="w-12 h-12 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
@@ -246,7 +228,6 @@
                     </div>
                 </div>
 
-                <!-- Member 4 -->
                 <div data-aos="fade-up" data-aos-delay="250" class="glass-card p-5 rounded-2xl flex items-center gap-4">
                     <div
                         class="w-12 h-12 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
@@ -262,7 +243,6 @@
                     </div>
                 </div>
 
-                <!-- Member 5 -->
                 <div data-aos="fade-up" data-aos-delay="300" class="glass-card p-5 rounded-2xl flex items-center gap-4">
                     <div
                         class="w-12 h-12 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
@@ -278,7 +258,6 @@
                     </div>
                 </div>
 
-                <!-- Member 6 -->
                 <div data-aos="fade-up" data-aos-delay="350" class="glass-card p-5 rounded-2xl flex items-center gap-4">
                     <div
                         class="w-12 h-12 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
@@ -297,11 +276,7 @@
         </section>
     </div>
 
-    <!-- ============================================ -->
-    <!-- SECTION 2: GAME SIMULATION (HIDDEN INITIALLY)-->
-    <!-- ============================================ -->
     <div id="game-page" class="w-full max-w-4xl mx-auto px-6 pt-8 hidden opacity-0">
-        <!-- Back Button -->
         <button onclick="kembaliKeDepan()"
             class="group inline-flex items-center gap-2 text-slate-400 hover:text-white transition duration-300 font-medium cursor-pointer mb-6">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5"
@@ -312,10 +287,8 @@
             Kembali
         </button>
 
-        <!-- 3D Tilting Panel -->
         <div id="game-container-panel"
             class="glass-panel p-8 md:p-10 rounded-3xl shadow-2xl relative overflow-hidden group">
-            <!-- Glare / Sheen effect for 3D realism -->
             <div class="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 pointer-events-none transition-opacity duration-300 opacity-0 z-10"
                 id="card-glare"></div>
 
@@ -327,7 +300,6 @@
                 <p class="text-slate-400 text-sm">Pilih mode dan letakkan koordinat pada papan grid</p>
             </div>
 
-            <!-- Mode Selection Tabs -->
             <div class="mode-buttons flex flex-wrap gap-2.5 justify-center mb-8 relative z-20">
                 <button id="btnSegitiga" onclick="pilihMode('Segitiga')"
                     class="px-5 py-2.5 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white hover:bg-slate-800 transition duration-300 font-medium cursor-pointer select-none">Segitiga</button>
@@ -339,14 +311,11 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center relative z-20">
-                <!-- Left: 4x4 Coordinate Board Grid -->
                 <div class="flex flex-col items-center">
                     <div class="inline-grid grid-cols-4 gap-4 p-5 rounded-2xl bg-slate-900/40 border border-slate-800/80 shadow-inner"
                         id="papanGrid">
-                        <!-- Points A to P will be generated by JavaScript -->
-                    </div>
+                        </div>
 
-                    <!-- Reset Coordinates Button -->
                     <button id="btnReset" onclick="resetKoordinat()"
                         class="mt-6 px-6 py-2.5 rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-900/50 hover:bg-slate-800 text-slate-400 hover:text-white transition duration-300 font-medium cursor-pointer select-none flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
@@ -358,15 +327,12 @@
                     </button>
                 </div>
 
-                <!-- Right: Indicator Panel -->
                 <div
                     class="flex flex-col items-center justify-center p-6 rounded-2xl bg-slate-900/30 border border-slate-850 h-full min-h-[250px]">
                     <h3 class="text-sm font-semibold tracking-wider text-slate-500 uppercase mb-4">Lampu Indikator</h3>
 
-                    <!-- Glow Lamp -->
                     <div id="lampu" class="lampu"></div>
 
-                    <!-- Status message text box -->
                     <div class="min-h-[60px] flex items-center justify-center w-full px-4 mt-4">
                         <p id="statusTeks"
                             class="text-slate-400 font-medium text-center transition-colors duration-300">
@@ -378,37 +344,80 @@
         </div>
     </div>
 
-    <!-- ============================================ -->
-    <!-- JAVASCRIPT LOGIC                             -->
-    <!-- ============================================ -->
     <script>
-        // --- 1. DATABASE 33 KOMBINASI BENTUK ---
-        // (LOGIC IS PRESERVED EXACTLY AS ORIGINAL)
-        const kombinasiSegitiga = [
-            ['B', 'E', 'G'], ['B', 'E', 'F'], ['B', 'F', 'G'], // Puncak B
-            ['C', 'F', 'H'], ['C', 'F', 'G'], ['C', 'G', 'H'], // Puncak C
-            ['J', 'M', 'O'], ['J', 'M', 'N'], ['J', 'N', 'O'], // Puncak J
-            ['K', 'N', 'P'], ['K', 'N', 'O'], ['K', 'O', 'P']  // Puncak K
-        ];
-
-        const kombinasiPersegi = [
-            ['A', 'B', 'F', 'E'], ['B', 'C', 'G', 'F'], ['C', 'D', 'H', 'G'],
-            ['E', 'F', 'J', 'I'], ['F', 'G', 'K', 'J'], ['G', 'H', 'L', 'K'],
-            ['I', 'J', 'N', 'M'], ['J', 'K', 'O', 'N'], ['K', 'L', 'P', 'O']
-        ];
-
-        const kombinasiPersegiPanjang = [
-            // Horizontal
-            ['A', 'C', 'G', 'E'], ['B', 'D', 'H', 'F'], ['E', 'G', 'K', 'I'],
-            ['F', 'H', 'L', 'J'], ['I', 'K', 'O', 'M'], ['J', 'L', 'P', 'N'],
-            // Vertikal
-            ['A', 'B', 'J', 'I'], ['B', 'C', 'K', 'J'], ['C', 'D', 'L', 'K'],
-            ['E', 'F', 'N', 'M'], ['F', 'G', 'O', 'N'], ['G', 'H', 'P', 'O']
-        ];
+        // --- 1. PETA KOORDINAT (X, Y) UNTUK GRID 4x4 ---
+        // Algoritma ini memetakan posisi huruf layaknya kartesius untuk rumus matematika
+        const petaGrid = {
+            'A': {x:0, y:0}, 'B': {x:1, y:0}, 'C': {x:2, y:0}, 'D': {x:3, y:0},
+            'E': {x:0, y:1}, 'F': {x:1, y:1}, 'G': {x:2, y:1}, 'H': {x:3, y:1},
+            'I': {x:0, y:2}, 'J': {x:1, y:2}, 'K': {x:2, y:2}, 'L': {x:3, y:2},
+            'M': {x:0, y:3}, 'N': {x:1, y:3}, 'O': {x:2, y:3}, 'P': {x:3, y:3}
+        };
 
         let modeSekarang = 'Persegi';
         let titikAktif = [];
         const hurufGrid = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
+
+        // --- FUNGSI MATEMATIKA CERDAS ---
+        // Menghitung jarak kuadrat antara dua titik
+        function hitungJarakKuadrat(p1, p2) {
+            return Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
+        }
+
+        // Cek Segitiga (Semua bentuk segitiga asal tidak sejajar/satu garis lurus)
+        function cekSegitigaValid(titikTitik) {
+            if (titikTitik.length !== 3) return false;
+            let p1 = petaGrid[titikTitik[0]], p2 = petaGrid[titikTitik[1]], p3 = petaGrid[titikTitik[2]];
+            
+            // Rumus Luas Area untuk membuktikan 3 titik tidak segaris (collinear)
+            let luasArea = Math.abs((p2.x - p1.x)*(p3.y - p1.y) - (p2.y - p1.y)*(p3.x - p1.x));
+            return luasArea > 0;
+        }
+
+        // Cek Persegi (4 sisi sama panjang, 2 diagonal sama panjang)
+        function cekPersegiValid(titikTitik) {
+            if (titikTitik.length !== 4) return false;
+            let p = titikTitik.map(huruf => petaGrid[huruf]);
+            let jarak = [];
+            
+            // Hitung semua jarak kombinasi antar 4 titik (6 garis total)
+            for(let i=0; i<4; i++) {
+                for(let j=i+1; j<4; j++) {
+                    jarak.push(hitungJarakKuadrat(p[i], p[j]));
+                }
+            }
+            jarak.sort((a,b) => a - b);
+            
+            // Persegi harus punya: 4 sisi sama (jarak index 0-3), 2 diagonal sama (index 4-5)
+            // Dan hukum pythagoras (sisi^2 * 2 = diagonal^2) untuk memastikan sudut 90 derajat
+            return jarak[0] > 0 && 
+                   jarak[0] === jarak[1] && jarak[1] === jarak[2] && jarak[2] === jarak[3] &&
+                   jarak[4] === jarak[5] &&
+                   jarak[0] * 2 === jarak[4];
+        }
+
+        // Cek Persegi Panjang (2 pasang sisi sejajar sama panjang, 2 diagonal sama panjang, tidak boleh jadi persegi)
+        function cekPersegiPanjangValid(titikTitik) {
+            if (titikTitik.length !== 4) return false;
+            let p = titikTitik.map(huruf => petaGrid[huruf]);
+            let jarak = [];
+            
+            for(let i=0; i<4; i++) {
+                for(let j=i+1; j<4; j++) {
+                    jarak.push(hitungJarakKuadrat(p[i], p[j]));
+                }
+            }
+            jarak.sort((a,b) => a - b);
+            
+            // Persegi panjang: 2 sisi lebar sama (0-1), 2 sisi panjang sama (2-3), 2 diagonal sama (4-5)
+            // Pythagoras: lebar^2 + panjang^2 = diagonal^2
+            return jarak[0] > 0 &&
+                   jarak[0] === jarak[1] && 
+                   jarak[2] === jarak[3] &&
+                   jarak[4] === jarak[5] &&
+                   jarak[0] + jarak[2] === jarak[4] &&
+                   jarak[0] !== jarak[2]; // Jika sisi 0 == sisi 2, itu adalah Persegi (bukan Persegi Panjang)
+        }
 
         // --- 2. MEMBUAT TOMBOL A SAMPAI P ---
         const papanGrid = document.getElementById('papanGrid');
@@ -451,7 +460,7 @@
             cekJawaban();
         }
 
-        // --- 5. RESET KOORDINAT FUNGSI (BARU) ---
+        // --- 5. RESET KOORDINAT FUNGSI ---
         function resetKoordinat() {
             titikAktif = [];
             document.querySelectorAll('.titik').forEach(b => b.classList.remove('ditekan'));
@@ -469,8 +478,7 @@
             return mode;
         }
 
-        // --- 6. LOGIKA PENGECEKAN BENAR/SALAH ---
-        // (LOGIC STRUCTURE AND CORE EVALUATION IS PRESERVED EXACTLY AS ORIGINAL)
+        // --- 6. LOGIKA PENGECEKAN BENAR/SALAH YANG SUDAH DI-UPGRADE ---
         function cekJawaban() {
             const lampu = document.getElementById('lampu');
             const status = document.getElementById('statusTeks');
@@ -483,23 +491,15 @@
                 return;
             }
 
-            // Cek Mode Persegi (Harus 4 titik)
+            // Pengecekan otomatis menggunakan Algoritma Geometri
             if (modeSekarang === 'Persegi' && titikAktif.length === 4) {
-                jawabanBenar = kombinasiPersegi.some(kombinasi =>
-                    kombinasi.every(val => titikAktif.includes(val))
-                );
+                jawabanBenar = cekPersegiValid(titikAktif);
             }
-            // Cek Mode Segitiga (Harus 3 titik)
             else if (modeSekarang === 'Segitiga' && titikAktif.length === 3) {
-                jawabanBenar = kombinasiSegitiga.some(kombinasi =>
-                    kombinasi.every(val => titikAktif.includes(val))
-                );
+                jawabanBenar = cekSegitigaValid(titikAktif);
             }
-            // Cek Mode Persegi Panjang (Harus 4 titik)
             else if (modeSekarang === 'PersegiPanjang' && titikAktif.length === 4) {
-                jawabanBenar = kombinasiPersegiPanjang.some(kombinasi =>
-                    kombinasi.every(val => titikAktif.includes(val))
-                );
+                jawabanBenar = cekPersegiPanjangValid(titikAktif);
             }
 
             // Output Lampu & Animasi Interaktif GSAP
@@ -530,7 +530,7 @@
             }
         }
 
-        // --- 7. GSAP PAGE TRANSITIONS (BARU) ---
+        // --- 7. GSAP PAGE TRANSITIONS ---
         function bukaGame() {
             gsap.to("#landing-page", {
                 opacity: 0,
@@ -584,7 +584,7 @@
             });
         }
 
-        // --- 8. 3D TILT EFFECT FOR GAME CONTAINER (BARU) ---
+        // --- 8. 3D TILT EFFECT FOR GAME CONTAINER ---
         const gamePanel = document.getElementById('game-container-panel');
         const cardGlare = document.getElementById('card-glare');
 
@@ -629,7 +629,7 @@
             });
         });
 
-        // --- 9. BACKGROUND ANIMATIONS (BARU) ---
+        // --- 9. BACKGROUND ANIMATIONS ---
         function initBackgroundAnimations() {
             // Animate ambient glow orbs drifting slowly
             gsap.to("#ambient-1", {
@@ -723,7 +723,6 @@
         }
     </script>
 
-    <!-- AOS JS (Animate on Scroll) -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
         AOS.init({
