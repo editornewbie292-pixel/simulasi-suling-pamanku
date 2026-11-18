@@ -11,7 +11,7 @@ npm install --no-audit --no-fund --loglevel=error
 if [ "${1:-}" = "--voice" ]; then
   [ -x .venv/bin/python ] || python3 -m venv .venv
   .venv/bin/python -m pip install -q --upgrade pip
-  .venv/bin/python -m pip install -q numpy scipy soundfile kokoro-onnx sherpa-onnx
+  .venv/bin/python -m pip install -q numpy scipy soundfile kokoro-onnx sherpa-onnx faster-whisper
   M="$KIT/models"; mkdir -p "$M"
   [ -s "$M/kokoro-v1.0.onnx" ] || curl -fL -o "$M/kokoro-v1.0.onnx" https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx
   [ -s "$M/voices-v1.0.bin" ]  || curl -fL -o "$M/voices-v1.0.bin"  https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
