@@ -172,3 +172,68 @@ export function wallRoom(scene, o = {}) { // simple interior: floor + 3 walls
   g.add(M(new G.BoxGeometry(.1, h, d), o.wall2 || o.wall || '#e0d0a0', [w / 2, h / 2, 0]));
   scene.add(g); return g;
 }
+
+// ---------- more kampung pieces ----------
+// asphalt / concrete road along z with a dashed centre line
+export function road(scene, o = {}) {
+  const w = o.w || 5, len = o.len || 120, x = o.x || 0;
+  const t = canvasTex(128, 512, (c, W, H) => { c.fillStyle = o.col || '#5a5a5e'; c.fillRect(0, 0, W, H); const R = rng(4); for (let i = 0; i < 900; i++) { c.fillStyle = R() > .5 ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.1)'; c.fillRect(R() * W, R() * H, 2, 2); } if (o.line !== false) { c.fillStyle = '#e8e0c8'; for (let y = 0; y < H; y += 128) c.fillRect(W / 2 - 4, y, 8, 64); } }, [1, len / 8]);
+  const m = new G.Mesh(new G.PlaneGeometry(w, len), mat('#ffffff', { map: t })); m.rotation.x = -Math.PI / 2; m.position.set(x, .015, o.z || 0); m.receiveShadow = true; scene.add(m); return m;
+}
+// electricity poles along a line with sagging wires between them
+export function poles(scene, pts, o = {}) {
+  const h = o.h || 7, g = new G.Group();
+  pts.forEach(([x, z]) => { g.add(M(new G.CylinderGeometry(.09, .12, h, 8), o.col || '#8a8a86', [x, h / 2, z])); g.add(M(new G.BoxGeometry(1.2, .08, .08), '#5a5a58', [x, h - .5, z])); });
+  for (let i = 0; i < pts.length - 1; i++) for (const k of [-.5, .5]) {
+    const a = new G.Vector3(pts[i][0] + k, h - .45, pts[i][1]), b = new G.Vector3(pts[i + 1][0] + k, h - .45, pts[i + 1][1]);
+    const c = new G.QuadraticBezierCurve3(a, a.clone().lerp(b, .5).add(new G.Vector3(0, -.6, 0)), b);
+    g.add(new G.Mesh(new G.TubeGeometry(c, 20, .015, 4), mat('#1e1a1e')));
+  }
+  scene.add(g); return g;
+}
+export function potPlant(scene, x, z, o = {}) { const g = new G.Group(), s = o.s || 1; g.add(M(new G.CylinderGeometry(.22 * s, .16 * s, .34 * s, 10), o.pot || '#c0643a', [x, .17 * s, z])); g.add(M(new G.SphereGeometry(.32 * s, 10, 7), o.leaf || '#4f9a3a', [x, .5 * s, z], { hull: 1.07 })); scene.add(g); return g; }
+// bamboo fence from (x0,z0) to (x1,z1)
+export function fence(scene, x0, z0, x1, z1, o = {}) {
+  const g = new G.Group(), n = Math.max(2, Math.round(Math.hypot(x1 - x0, z1 - z0) / .14)), h = o.h || 1.1, col = o.col || '#c8a85a';
+  for (let i = 0; i <= n; i++) { const k = i / n; g.add(M(new G.CylinderGeometry(.05, .05, h * (i % 2 ? .95 : 1), 6), col, [lerp(x0, x1, k), h / 2, lerp(z0, z1, k)], { inkW: 1.5 })); }
+  const len = Math.hypot(x1 - x0, z1 - z0), ang = Math.atan2(x1 - x0, z1 - z0);
+  for (const y of [h * .35, h * .75]) g.add(M(new G.CylinderGeometry(.035, .035, len, 6), '#a8883a', [(x0 + x1) / 2, y, (z0 + z1) / 2], { rot: [Math.PI / 2, 0, 0], inkW: 1.5 }).rotateOnWorldAxis(new G.Vector3(0, 1, 0), ang));
+  scene.add(g); return g;
+}
+// a small warung: counter, awning, shelves of goods and a sign
+export function warung(scene, x, z, o = {}) {
+  const g = new G.Group(), rot = o.rot || 0, wall = o.wall || '#7fbfa8';
+  g.add(M(new G.BoxGeometry(3.2, 2.8, 2.4), wall, [0, 1.4, -1.2]));
+  g.add(M(new G.BoxGeometry(2.6, 1.9, .1), '#3a2a24', [0, 1.55, -.02], { ink: false }));
+  const R = rng(5); for (let s = 0; s < 3; s++) { g.add(M(new G.BoxGeometry(2.4, .05, .3), '#8a5a3a', [0, .9 + s * .5, -.2], { ink: false })); for (let i = 0; i < 9; i++) g.add(M(new G.BoxGeometry(.18, .26, .16), ['#e8564a', '#f2c230', '#3a7fc0', '#3fa35b', '#f0f0e8'][Math.floor(R() * 5)], [-1.05 + i * .26, 1.06 + s * .5, -.2], { inkW: 1.5 })); }
+  g.add(M(new G.BoxGeometry(3.0, .95, .6), o.counter || '#c89a5a', [0, .48, .45]));
+  g.add(M(new G.BoxGeometry(3.6, .1, 1.4), o.awning || '#d8463a', [0, 2.75, .55], { rot: [-.18, 0, 0] }));
+  const sign = canvasTex(512, 128, (c, W, H) => { c.fillStyle = o.signCol || '#f6efd8'; c.fillRect(0, 0, W, H); c.strokeStyle = INK; c.lineWidth = 10; c.strokeRect(5, 5, W - 10, H - 10); c.fillStyle = o.textCol || '#c8302c'; c.font = '700 64px Poppins'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(o.text || 'WARUNG', W / 2, H / 2 + 4); });
+  const sm = new G.Mesh(new G.PlaneGeometry(2.2, .55), new G.MeshToonMaterial({ map: sign })); sm.position.set(0, 3.25, .02); g.add(sm);
+  g.position.set(x, 0, z); g.rotation.y = rot; g.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+  scene.add(g); return g;
+}
+// a scooter (motor bebek)
+export function motor(scene, x, z, o = {}) {
+  const g = new G.Group(), col = o.col || '#d8302c';
+  for (const zz of [-.6, .6]) g.add(M(new G.TorusGeometry(.26, .08, 8, 16), '#222', [0, .3, zz], { rot: [0, Math.PI / 2, 0], inkW: 2 }));
+  g.add(M(new G.BoxGeometry(.32, .38, 1.1), col, [0, .62, .05]));
+  g.add(M(new G.BoxGeometry(.3, .12, .55), '#222', [0, .86, -.15]));
+  g.add(M(new G.BoxGeometry(.12, .7, .12), '#444', [0, .85, .62], { rot: [-.3, 0, 0] }));
+  g.add(M(new G.BoxGeometry(.7, .06, .06), '#333', [0, 1.2, .72]));
+  g.position.set(x, 0, z); g.rotation.y = o.rot || 0; scene.add(g); return g;
+}
+export function coconut(scene, x, z, o = {}) {
+  const g = new G.Group(), h = o.h || 6, lean = o.lean || .15;
+  const c = new G.QuadraticBezierCurve3(new G.Vector3(0, 0, 0), new G.Vector3(lean * h * .2, h * .5, 0), new G.Vector3(lean * h, h, 0));
+  g.add(new G.Mesh(new G.TubeGeometry(c, 16, .16, 7), mat('#9a7a52')));
+  const top = c.getPoint(1); for (let i = 0; i < 7; i++) { const lf = M(new G.BoxGeometry(2.4, .04, .45), '#4f9a3a', [top.x + Math.cos(i / 7 * TAU) * 1.1, top.y - .25, Math.sin(i / 7 * TAU) * 1.1], { inkW: 2 }); lf.rotation.set(0, -i / 7 * TAU, -.35); g.add(lf); }
+  g.position.set(x, 0, z); g.traverse(m => { if (m.isMesh) m.castShadow = true; }); scene.add(g); return g;
+}
+export function sea(scene, o = {}) {
+  const m = new G.Mesh(new G.PlaneGeometry(400, 200, 40, 20), mat(o.col || '#2f9ad0', { transparent: true, opacity: .95 }));
+  m.rotation.x = -Math.PI / 2; m.position.set(0, o.y || .05, (o.z || -20) - 100); m.receiveShadow = true; scene.add(m);
+  const p = m.geometry.attributes.position, base = Float32Array.from(p.array);
+  scene.userData.tick.push((lt, t) => { for (let i = 0; i < p.count; i++) p.array[i * 3 + 2] = Math.sin(base[i * 3] * .3 + t * 1.2) * .08 + Math.cos(base[i * 3 + 1] * .4 + t) * .06; p.needsUpdate = true; });
+  return m;
+}

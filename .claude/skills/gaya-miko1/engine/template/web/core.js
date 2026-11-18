@@ -98,15 +98,25 @@ export function canvasTex(w, h, draw, repeat = [1, 1]) {
 }
 
 // ---------- light moods (the "pencahayaan") ----------
+// sky: [top, middle, horizon]; fog: [colour, near, far]; hemi: [sky, ground, power]; sun: [colour, power, direction]
+// tint: the colour characters take; bloom: [strength, radius, threshold] for glowing things
 export const MOODS = {
-  day:    { sky: ['#3f8fe0', '#8cc4f0', '#e6f2f8'], fog: ['#d5e8f2', 30, 160], hemi: ['#e4f1ff', '#8a7a62', 1.7], sun: ['#fff2da', 2.6, [6, 12, 8]], tint: '#ffffff', exposure: 1.0 },
-  morning:{ sky: ['#6aa8e8', '#f2d6b8', '#ffe9cc'], fog: ['#f2dcc4', 25, 140], hemi: ['#ffeedd', '#7a6a5a', 1.5], sun: ['#ffd9a8', 2.6, [-8, 6, 6]], tint: '#fff2e2', exposure: 1.0 },
-  sunset: { sky: ['#5a4f98', '#ee8458', '#ffc27a'], fog: ['#f0a26e', 18, 110], hemi: ['#ffc9a0', '#4a3040', 1.15], sun: ['#ffae6a', 3.2, [-10, 3.5, -8]], tint: '#ffd6b2', exposure: 1.0 },
-  storm:  { sky: ['#2a3040', '#4a5262', '#6a7180'], fog: ['#5a6170', 10, 70], hemi: ['#a0a8c0', '#2a2a30', 1.1], sun: ['#c8d0e0', 1.0, [4, 10, 6]], tint: '#b4bccc', exposure: 1.0 },
-  night:  { sky: ['#070b22', '#18225a', '#2c3a78'], fog: ['#1a2452', 10, 80], hemi: ['#5a6cc0', '#0c0c1c', 1.0], sun: ['#a8bcff', 1.1, [-6, 10, 4]], tint: '#8e9fe0', exposure: 1.05, stars: true },
-  glow:   { sky: ['#020a06', '#06180e', '#0c2a18'], fog: ['#0a2214', 6, 45], hemi: ['#3a7a55', '#040806', .8], sun: ['#7fd0a0', .6, [-4, 10, 4]], tint: '#9fdcae', exposure: 1.05, bloom: [.65, .4, .82] },
-  indoor: { sky: ['#2a1c14', '#3a2a1e', '#4a3626'], fog: ['#3a2a20', 12, 60], hemi: ['#ffe2c0', '#3a2a20', 1.2], sun: ['#ffd8a0', 1.6, [3, 8, 6]], tint: '#ffe6c8', exposure: 1.0 },
+  pagi:    { sky: ['#5fa6ea', '#b8dcf2', '#fbe8cf'], fog: ['#f0e2cc', 25, 150], hemi: ['#fff2e0', '#7a6a5a', 1.6], sun: ['#ffe2b8', 2.5, [-8, 6, 7]], tint: '#fff4e6' },
+  siang:   { sky: ['#2f86e0', '#7cc0f2', '#e2f2fa'], fog: ['#d6eaf4', 35, 170], hemi: ['#e8f4ff', '#8a7a62', 1.8], sun: ['#fffaf0', 3.0, [3, 14, 5]], tint: '#ffffff' },
+  sore:    { sky: ['#4a7ec8', '#f2b878', '#ffd89a'], fog: ['#f4cfa0', 22, 130], hemi: ['#ffe0b8', '#6a4a3a', 1.35], sun: ['#ffc074', 3.0, [-9, 4.5, -4]], tint: '#ffe2c0' },
+  senja:   { sky: ['#5a4f98', '#ee8458', '#ffc27a'], fog: ['#f0a26e', 18, 110], hemi: ['#ffc9a0', '#4a3040', 1.15], sun: ['#ffae6a', 3.2, [-10, 3.5, -8]], tint: '#ffd6b2' },
+  mendung: { sky: ['#6f7c8c', '#a3adb8', '#c6ccd2'], fog: ['#b4bcc4', 18, 110], hemi: ['#d8dee6', '#5a5a58', 1.6], sun: ['#e8ecf0', .9, [4, 12, 6]], tint: '#e6eaee' },
+  hujan:   { sky: ['#2a3040', '#4a5262', '#6a7180'], fog: ['#5a6170', 10, 70], hemi: ['#a0a8c0', '#2a2a30', 1.1], sun: ['#c8d0e0', 1.0, [4, 10, 6]], tint: '#b4bccc' },
+  malam:   { sky: ['#070b22', '#18225a', '#2c3a78'], fog: ['#1a2452', 10, 80], hemi: ['#5a6cc0', '#0c0c1c', 1.0], sun: ['#a8bcff', 1.1, [-6, 10, 4]], tint: '#8e9fe0', exposure: 1.05, stars: true },
+  rumah:   { sky: ['#f0d8b0', '#f0d8b0', '#f0d8b0'], fog: ['#f0dcc0', 20, 90], hemi: ['#fff0dc', '#8a6a4a', 1.7], sun: ['#fff0d8', 1.8, [4, 9, 7]], tint: '#fff2e2' },
+  lampu:   { sky: ['#2a1c14', '#3a2a1e', '#4a3626'], fog: ['#3a2a20', 12, 60], hemi: ['#ffe2c0', '#3a2a20', 1.1], sun: ['#ffd8a0', 1.4, [3, 8, 6]], tint: '#ffe0bc' },
+  horor:   { sky: ['#0a0608', '#1e0f12', '#2e1418'], fog: ['#1a0c0e', 5, 40], hemi: ['#7a5a6a', '#0a0406', .75], sun: ['#c8a0a8', .7, [-4, 8, -4]], tint: '#b49aa6', exposure: 1.0 },
+  magis:   { sky: ['#140a2a', '#3a1a6a', '#7a4ab0'], fog: ['#2a1650', 8, 60], hemi: ['#b48aff', '#100820', 1.0], sun: ['#e0c0ff', 1.2, [-4, 10, 4]], tint: '#d2bcff', stars: true, bloom: [.7, .5, .8] },
+  hijau:   { sky: ['#020a06', '#06180e', '#0c2a18'], fog: ['#0a2214', 6, 45], hemi: ['#3a7a55', '#040806', .8], sun: ['#7fd0a0', .6, [-4, 10, 4]], tint: '#9fdcae', exposure: 1.05, bloom: [.65, .4, .82] },
+  pantai:  { sky: ['#2a90e8', '#86d0f4', '#f2f6e8'], fog: ['#e2f0f2', 40, 200], hemi: ['#f0faff', '#c8a878', 1.9], sun: ['#fff6e0', 3.1, [4, 13, 7]], tint: '#ffffff' },
 };
+// English names kept for older shots
+Object.assign(MOODS, { day: MOODS.siang, morning: MOODS.pagi, sunset: MOODS.senja, storm: MOODS.hujan, night: MOODS.malam, glow: MOODS.hijau, indoor: MOODS.lampu });
 function skyDome(cols) {
   const g = new THREE.SphereGeometry(450, 32, 16);
   const m = new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false,

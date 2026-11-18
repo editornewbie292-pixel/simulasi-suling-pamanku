@@ -2,7 +2,7 @@
 // Shots are timed by the voice: L(i) = start of script line i, T('kata') = start of a word.
 // Re-running align with a new voiceover re-times everything automatically.
 import { THREE, shot, makeScene, camera, camMove, focusSun, kf, lerp, clamp, smooth, backOut, L, T, DUR, M, mat, glowMat, rng, TAU, start } from './core.js';
-import { Person, LOOKS, SKIN, blinkAt } from './chars.js';
+import { Person, LOOKS, SKIN, POSE, blinkAt } from './chars.js';
 import * as w from './world.js';
 
 const BIMA = { ...LOOKS.anak, shirt: '#e8564a', pants: '#2f4f8f' };
@@ -132,9 +132,9 @@ shot(L(5), L(6), () => {
   const ball = new THREE.Mesh(new THREE.SphereGeometry(.035, 12, 8), glowMat('#d8ff7a', 1.4)); scene.add(ball);
   const L1 = new THREE.PointLight('#b8ff6a', 1.2, 1.5, 1.6); scene.add(L1);
   return { scene, cam, update(lt, t) {
-    bima.set({ eyes: lt > .6 ? 'happy' : 'wide', mouth: lt > .6 ? 'grin' : 'o', brows: 'up', look: [0, .8], armL: [.6, -1.9], armR: [.6, -1.9] });
-    const p = bima.mesh.position, hy = (1470 - 900) * bima.k;
-    ball.position.set(p.x, hy + Math.sin(t * 3) * .02, p.z + .12); L1.position.set(p.x, hy + .1, p.z + .35); L1.intensity = 1.1 + Math.sin(t * 5) * .4;
+    bima.set({ ...POSE.cup, eyes: lt > .6 ? 'happy' : 'wide', mouth: lt > .6 ? 'grin' : 'o', brows: 'up', look: [0, .8] });
+    const l = bima.hand3('L'), r = bima.hand3('R'), hx = (l[0] + r[0]) / 2, hy = (l[1] + r[1]) / 2 + .05, hz = (l[2] + r[2]) / 2 + .06;
+    ball.position.set(hx, hy + Math.sin(t * 3) * .015, hz); L1.position.set(hx, hy + .1, hz + .3); L1.intensity = 1.1 + Math.sin(t * 5) * .4;
     const f = bima.face3();
     camMove(cam, lt, [[0, [.3, .75, 2.2], [0, .62, 0]], [L(6) - L(5), [.1, .72, 1.7], [0, .64, 0]]], .015, 6);
   } };

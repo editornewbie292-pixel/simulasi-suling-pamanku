@@ -60,7 +60,7 @@ import { Person, LOOKS, SKIN, blinkAt } from './chars.js';
 import * as w from './world.js';
 
 shot(L(0), L(1), () => {
-  const S = makeScene('sunset'), cam = camera(36), { scene } = S;        // moods: day morning sunset storm night glow indoor
+  const S = makeScene('sore'), cam = camera(36), { scene } = S;          // mood: see Light below
   w.ground(scene, { kind: 'tile' });                                      // tile grass dirt plank sand
   w.houseRow(scene, { side: -1 }); w.houseRow(scene, { side: 1 });        // a kontrakan alley along z
   const mbah = new Person(scene, LOOKS.nenek, { x: 0, z: 0, h: 1.5 });
@@ -78,31 +78,42 @@ start();                                                                  // las
   plus a slow float (`drift`, default 0.025 m). Always moving, never jerky. In 9:16 the frame is narrow:
   at 4 m and fov 36 it is only about 1.5 m wide, so keep subjects near the centre line.
 - **People (`Person`):** looks in `LOOKS` (nenek, ibu, gadis, pegawai, bapak, pemuda, anak) or your own
-  spec: `skin, hair ('bun'|'bob'|'short'|'spiky'|'peci'|'hijab'|'long'|'bald'), hairCol, hijabCol, old,
+  spec: `skin, hair ('short'|'tousled'|'bun'|'bob'|'long'|'peci'|'hijab'|'bald'), hairCol, hijabCol, old, ears,
   eyes ('dot'|'iris'), shirt, shirtStyle ('plain'|'office'|'kebaya'|'koko'|'kaos'|'apron'), sleeve,
   sarong + motif ('ring'|'stripe'|'kawung'), pants, kid`. Pose each frame with `set({...})`: `eyes`
   (open closed happy wide half shock), `mouth` (smile flat o grin smirk frown wavy teeth), `brows`
   (flat up angry worried one), `look:[x,y]`, `blink`, `talk` (+ `t`), `armL/armR:[a1,a2]` (0 = hanging,
-  ~2.5 = raised), `walk` (phase), `lean`, `tilt`, `flip`, `sweat`, `tears`. `h` = height in metres
-  (adult 1.5-1.65, child about 1.05). `face3()` gives the face position for aiming the camera.
-- **World (`world.js`):** `ground, houseRow, clothesline, bamboo (glow option), tree, bush, mountain,
-  hills, rice, glowShrooms, specks (fireflies/spores), rain, moon, sunDisc, clouds, lamp, table,
-  basket, bucket, stool, logs, box, wallRoom`. For anything else, build from `M(geometry, colour, pos)`
+  ~2.5 = raised), `turn` (-1..1: the face turns three-quarters left/right), `walk` (phase), `lean`, `tilt`,
+  `flip`, `sweat`, `tears`. Body poses: spread `POSE.hang | wave(t) | point | hips | cup | carry | cheer |
+  shrug | scared | think | phone` into `set()`. `h` = height in metres (adult 1.5-1.65, child about 1.05).
+  `face3()` = face position (aim the camera), `hand3('L'|'R')` = hand position (put held props there).
+- **Hair** is built from smooth tapered locks under one outline, with strand lines and a soft sheen:
+  `short` (natural swept fringe, the default for men), `tousled` (kids), `bun`, `bob`, `long`, `peci`.
+  To add a style, add an entry to `HAIR` in chars.js: a skull-hugging cap with a hairline plus locks
+  `[rootX, rootY, tipX, tipY, width, bend]` in head units.
+- **World (`world.js`):** `ground (tile|grass|dirt|plank|sand), road, houseRow, warung (sign text),
+  poles (electric poles + wires), fence (bamboo), potPlant, motor, clothesline, bamboo (glow option), tree,
+  coconut, bush, mountain, hills, rice, sea, glowShrooms, specks (fireflies/spores/dust), rain, moon,
+  sunDisc, clouds, lamp, table, basket, bucket, stool, logs, box, wallRoom`. Improvise new places from
+  these and plain shapes; when the user sends references for a place, build it to match. For anything else, build from `M(geometry, colour, pos)`
   (adds ink edges) or `M(..., { hull: true })` for round shapes; `glowMat(colour)` for things that shine.
 - **Light:** `makeScene(mood, overrides)` sets sky gradient, fog, hemisphere + sun with soft shadows and
-  the tint the characters take. `glow` turns on bloom. Point lights (`lamp`) add warm pools at night.
+  the tint the characters take. Moods: `pagi, siang, sore, senja, mendung, hujan, malam, rumah (bright
+  interior), lampu (lamplit interior), horor, magis, hijau (green glow), pantai`. Pick per beat of the
+  story, not one look for the whole reel; override any part, e.g. `makeScene('siang', { sky: [...] })`.
+  `magis` and `hijau` turn on bloom. Point lights (`lamp`) add warm pools at night.
 
 ## Style spec (from the reference reels)
 - **Format:** 1080x1920, 30 fps (60 optional), mostly cuts, a shot every 2-3 s, wides then close-ups.
-- **Characters:** wide pillow-shaped heads (about 1.2x wider than tall) on bean bodies, sleeve-tube arms
-  and short legs; sawo matang skin (#b67a50) with pink blush; thick dark-plum ink (#1e1021, ~20 px at
-  full size); hair or hijab with a white sheen streak; small oval eyes with a highlight, or big white eyes
+- **Characters:** wide pillow-shaped heads (about 1.2x wider than tall) with ears, on bean bodies,
+  sleeve-tube arms and short legs; sawo matang skin (#b67a50) with pink blush; thick dark-plum ink
+  (#1e1021, ~20 px at full size); smooth natural hair in a few big swept locks with soft tips; small oval eyes with a highlight, or big white eyes
   with blue irises for older people; thick brows doing most of the acting; a single hooked nose line.
   Local clothes: sarong with ring/stripe motif, koko, kebaya, office blazer with red lanyard + ID card.
 - **Worlds:** low-poly kampung places (gang kontrakan, sawah, rumpun bambu, gunung, warung) with ink
   edges on hard shapes, silhouette ink on round ones, soft shadows and distance fog.
-- **Light moods:** clear blue day, warm golden sunset, deep blue night with warm bulbs, stormy grey,
-  and a dark green glow world with bloom for mysterious or magical beats. Characters take the tint.
+- **Light moods follow the story:** fresh morning, bright noon, golden afternoon, sunset, overcast, rain,
+  night with warm bulbs, cosy interiors, horror, magic, green glow, beach. Characters take the tint.
 - **Camera:** always gliding: slow push-ins on faces, gentle side tracks on walks, small orbits on
   objects. No whip pans, no shake (except a hit).
 - **Captions:** 1-2 words, Poppins Bold, white with a dark outline and soft shadow, about 70% down

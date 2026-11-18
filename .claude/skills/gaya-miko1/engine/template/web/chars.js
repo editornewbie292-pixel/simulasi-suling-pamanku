@@ -18,7 +18,7 @@ export const LOOKS = {
   pegawai:  { skin: SKIN.sawo, hair: 'bob', hairCol: '#1f1820', shirt: '#2a3a72', shirtStyle: 'office', sleeve: 'long', pants: '#232a44' },
   bapak:    { skin: SKIN.gelap, hair: 'peci', hairCol: '#1f1820', shirt: '#e8e4dc', shirtStyle: 'koko', sleeve: 'long', sarong: '#6b8f6a', motif: 'stripe', motifCol: '#3d5a3c' },
   pemuda:   { skin: SKIN.sawo, hair: 'short', hairCol: '#1f1820', shirt: '#f0b532', shirtStyle: 'kaos', sleeve: 'short', pants: '#3a5aa0' },
-  anak:     { skin: SKIN.sawo, hair: 'spiky', hairCol: '#1f1820', shirt: '#e8564a', shirtStyle: 'kaos', sleeve: 'short', pants: '#2f4f8f', kid: true },
+  anak:     { skin: SKIN.sawo, hair: 'tousled', hairCol: '#1f1820', shirt: '#e8564a', shirtStyle: 'kaos', sleeve: 'short', pants: '#2f4f8f', kid: true },
 };
 
 // ---------- 2D drawing ----------
@@ -77,6 +77,8 @@ export function drawPerson(ctx, spec, P) {
     tube(ctx, [[x0, legTop], [lerp(x0, x1, .5) + side * 4, (legTop + FEET - 30) / 2], [x1, FEET - 30 - lift]], spec.sarong ? 34 : 40, legCol);
     ctx.beginPath(); ctx.ellipse(x1 + side * 14, FEET - 18 - lift, 58, 22, 0, 0, TAU); fillS(ctx, spec.sandal || '#3a2a2a', 12);
   }
+  // ---- long / bob hair falls behind the body
+  { const hs = HAIR[spec.hair]; if (hs && hs.back) backHair(ctx, hs.back, sx + clamp(P.turn || 0, -1, 1) * a * .07, hy, a, b, spec.hairCol || '#1f1820'); }
   // ---- arms (behind the body when hanging, in front when raised)
   const arms = { L: P.armL || [.18, -.1], R: P.armR || [.18, -.1] };
   const armPts = {};
@@ -88,7 +90,7 @@ export function drawPerson(ctx, spec, P) {
     else tube(ctx, p, 60, sleeve);
     ctx.beginPath(); ctx.arc(p[2][0], p[2][1], 34, 0, TAU); fillS(ctx, spec.skin, 12);
   };
-  const raised = k => arms[k][0] > 1.9;
+  const raised = k => arms[k][0] > 1.9 || arms[k][1] < -1.0;   // raised, or bent across the body: draw in front
   // ---- torso
   const tb = spec.sarong ? 1160 : 1120, tw = spec.kid ? .9 : 1;
   const torso = () => { ctx.beginPath(); ctx.moveTo(sx, 560); ctx.bezierCurveTo(sx + 190 * tw, 560, sx + 262 * tw, 720, sx + 276 * tw, 900); ctx.bezierCurveTo(sx + 290 * tw, tb - 70, sx + 190 * tw, tb, sx, tb); ctx.bezierCurveTo(sx - 190 * tw, tb, sx - 290 * tw, tb - 70, sx - 276 * tw, 900); ctx.bezierCurveTo(sx - 262 * tw, 720, sx - 190 * tw, 560, sx, 560); ctx.closePath(); };
@@ -118,61 +120,127 @@ export function drawPerson(ctx, spec, P) {
   ctx.restore();
 }
 
+// ---------- hair: smooth tapered locks merged under one outline ----------
+// a lock = [rootX, rootY, tipX, tipY, width, bend] in head units (x * a, y * b from the head centre)
+const HAIR = {
+  // natural short cut with volume and a fringe swept to one side (default for men and boys)
+  short: { cap: { line: -.6, drop: .55 }, locks: [
+    [-.1, -.8, -.22, -1.2, .55, -.12], [-.2, -.85, -1.02, -1.02, .38, -.3], [.1, -.9, .3, -1.32, .36, .35], [.35, -.88, .84, -1.2, .33, .32], [.55, -.78, 1.1, -.84, .27, .22],
+    [.45, -.95, -.6, -.56, .3, .1], [.15, -.95, -.98, -.36, .28, .08], [.65, -.9, .02, -.6, .25, .1],
+    [-.82, -.62, -1.05, -.02, .16, .12], [.84, -.62, 1.04, -.06, .16, -.12]] },
+  // a bit messier and taller (kids)
+  tousled: { cap: { line: -.6, drop: .55 }, locks: [
+    [-.3, -.88, -1.02, -1.18, .3, -.3], [-.1, -.9, -.55, -1.38, .28, -.24], [.1, -.9, .12, -1.42, .28, .24], [.3, -.88, .72, -1.32, .28, .3], [.5, -.8, 1.12, -1.0, .26, .25],
+    [.3, -.95, -.55, -.54, .27, .14], [0, -.95, -.95, -.38, .25, .1], [.62, -.9, .12, -.58, .23, .12],
+    [-.84, -.62, -1.08, -.05, .16, .14], [.84, -.62, 1.06, -.08, .16, -.14], [.7, -.8, 1.2, -.5, .17, -.25]] },
+  // hair pulled back: centre part, bun behind
+  bun: { cap: { line: -.64, drop: .6 }, locks: [
+    [0, -.8, -1.02, -.12, .3, .16], [0, -.8, 1.02, -.12, .3, -.16], [-.1, -.82, -.75, -.55, .22, .1], [.1, -.82, .75, -.55, .22, -.1]], bun: true },
+  // bob: fringe + side panels to the jaw
+  bob: { cap: { line: -.62, drop: .6 }, back: 'bob', locks: [
+    [.35, -.97, -.7, -.52, .3, .12], [.05, -.97, -.98, -.35, .27, .1], [.6, -.92, .05, -.58, .25, .1], [.8, -.84, .55, -.56, .19, .06],
+    [-.9, -.55, -1.08, .52, .2, .08], [.9, -.55, 1.08, .52, .2, -.08]] },
+  long: { cap: { line: -.62, drop: .6 }, back: 'long', locks: [
+    [0, -.8, -1.0, -.2, .3, .18], [0, -.8, 1.0, -.2, .3, -.18], [-.88, -.5, -1.1, .9, .2, .06], [.88, -.5, 1.1, .9, .2, -.06]] },
+  // under a peci only the temples show
+  peci: { cap: null, locks: [[-.82, -.62, -1.04, -.05, .17, .12], [.82, -.62, 1.04, -.05, .17, -.12]] },
+  bald: { cap: null, locks: [] },
+};
+function lockPath(ctx, rx, ry, tx, ty, w, bend, round = .2) {
+  // a tapered lock with a softly rounded tip
+  const dx = tx - rx, dy = ty - ry, Ln = Math.hypot(dx, dy) || 1, ux = dx / Ln, uy = dy / Ln, nx = -uy, ny = ux;
+  const mx = rx + dx * .5 + nx * Ln * bend, my = ry + dy * .5 + ny * Ln * bend, rt = w * round;
+  ctx.moveTo(rx + nx * w, ry + ny * w);
+  ctx.quadraticCurveTo(mx + nx * w * .6, my + ny * w * .6, tx + nx * rt - ux * rt, ty + ny * rt - uy * rt);
+  ctx.quadraticCurveTo(tx + ux * rt * .9, ty + uy * rt * .9, tx - nx * rt - ux * rt, ty - ny * rt - uy * rt);
+  ctx.quadraticCurveTo(mx - nx * w * .6, my - ny * w * .6, rx - nx * w, ry - ny * w);
+  ctx.closePath();
+}
+function lum(hex) { const n = parseInt(hex.slice(1), 16); return ((n >> 16 & 255) * .3 + (n >> 8 & 255) * .59 + (n & 255) * .11) / 255; }
+function lighten(hex, k) { const n = parseInt(hex.slice(1), 16), f = c => Math.round(clamp(c + (255 - c) * k, 0, 255)); return `rgb(${f(n >> 16 & 255)},${f(n >> 8 & 255)},${f(n & 255)})`; }
+function hairMass(ctx, style, cx, cy, a, b, hc, dx = 0) {
+  const H = HAIR[style]; if (!H || (!H.cap && !H.locks.length)) return;
+  // every piece is its own path: overlapping pieces must not cancel each other out
+  const pieces = [];
+  if (H.cap) { // a cap that hugs the skull down to a natural hairline (higher in the middle, lower at the temples)
+    const hx = cx + dx * .5, hl = x => { const u = (x - cx) / a; return cy + b * (H.cap.line + H.cap.drop * u * u); };
+    pieces.push(() => { ctx.beginPath(); let xr = 0;
+      for (let i = 0; i <= 64; i++) { const th = Math.PI + i / 64 * Math.PI, c = Math.cos(th), sn = Math.sin(th);
+        const x = hx + a * 1.05 * Math.sign(c) * Math.pow(Math.abs(c), 2 / 2.6), y = Math.min(cy - 4 + b * 1.06 * Math.sign(sn) * Math.pow(Math.abs(sn), 2 / 2.6), hl(x));
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); xr = x; }
+      for (let i = 1; i < 32; i++) { const x = lerp(xr, hx - a * 1.05, i / 32); ctx.lineTo(x, hl(x)); }
+      ctx.closePath(); });
+  }
+  for (const [x0, y0, x1, y1, w, bd] of H.locks) pieces.push(() => { ctx.beginPath(); lockPath(ctx, cx + dx + x0 * a, cy + y0 * b, cx + dx * 1.2 + x1 * a, cy + y1 * b, w * a, bd); });
+  ctx.lineJoin = 'round'; ctx.lineWidth = 34; ctx.strokeStyle = INK;
+  for (const p of pieces) { p(); ctx.stroke(); }                   // outline pass: only the outer edge survives
+  const g = ctx.createLinearGradient(0, cy - b * 1.5, 0, cy); g.addColorStop(0, lighten(hc, .16)); g.addColorStop(1, hc);
+  ctx.fillStyle = g; for (const p of pieces) { p(); ctx.fill(); }
+  // far-side shade + sheen, clipped piece by piece
+  const sg = ctx.createLinearGradient(cx + dx - a, 0, cx + dx + a * 1.1, 0); sg.addColorStop(0, 'rgba(20,8,20,0)'); sg.addColorStop(.55, 'rgba(20,8,20,0)'); sg.addColorStop(1, `rgba(20,8,20,${lum(hc) > .6 ? .1 : .3})`);
+  for (const p of pieces) { ctx.save(); p(); ctx.clip(); ctx.fillStyle = sg; ctx.fillRect(cx + dx - a * 1.5, cy - b * 1.8, a * 3, b * 2.2);
+    // soft sheen: a light curved band following the crown
+    ctx.beginPath(); ctx.arc(cx + dx - a * .05, cy - b * .2, a * .95, Math.PI * 1.22, Math.PI * 1.5); ctx.lineWidth = b * .11; ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255,255,255,.13)'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx + dx - a * .05, cy - b * .2, a * .95, Math.PI * 1.27, Math.PI * 1.4); ctx.lineWidth = b * .04; ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.stroke(); ctx.restore(); }
+  // strand lines following each lock
+  H.locks.forEach(([x0, y0, x1, y1, w, bd], i) => {
+    const rx = cx + dx + x0 * a, ry = cy + y0 * b, tx = cx + dx * 1.2 + x1 * a, ty = cy + y1 * b;
+    const dxl = tx - rx, dyl = ty - ry, Ln = Math.hypot(dxl, dyl), nx = -dyl / Ln, ny = dxl / Ln;
+    ctx.save(); pieces[(H.cap ? 1 : 0) + i](); ctx.clip();
+    ctx.beginPath(); ctx.moveTo(rx, ry); ctx.quadraticCurveTo(rx + dxl * .5 + nx * Ln * bd * .9, ry + dyl * .5 + ny * Ln * bd * .9, rx + dxl * .8, ry + dyl * .8);
+    ctx.lineWidth = 5; ctx.strokeStyle = lum(hc) > .6 ? 'rgba(120,100,90,.3)' : 'rgba(10,0,10,.28)'; ctx.stroke(); ctx.restore();
+  });
+}
+function backHair(ctx, kind, cx, cy, a, b, hc) {
+  const L = kind === 'long' ? 1.25 : .55;
+  const p = () => { ctx.beginPath(); ctx.moveTo(cx - a * 1.08, cy - b * .3); ctx.bezierCurveTo(cx - a * 1.2, cy + b * L * .5, cx - a * 1.12, cy + b * L, cx - a * .82, cy + b * (L + .08)); ctx.quadraticCurveTo(cx, cy + b * (L - .05), cx + a * .82, cy + b * (L + .08)); ctx.bezierCurveTo(cx + a * 1.12, cy + b * L, cx + a * 1.2, cy + b * L * .5, cx + a * 1.08, cy - b * .3); ctx.closePath(); };
+  p(); ctx.lineWidth = 34; ctx.strokeStyle = INK; ctx.stroke(); p(); ctx.fillStyle = hc; ctx.fill();
+  ctx.save(); p(); ctx.clip(); ctx.fillStyle = 'rgba(10,0,10,.25)'; ctx.fillRect(cx - a * 1.3, cy - b, a * 2.6, b * 3); ctx.restore();
+}
+function ears(ctx, spec, cx, cy, a, b, turn) {
+  for (const s of [-1, 1]) {
+    if (turn * s > .45) continue;                      // the far ear hides when the head turns
+    const x = cx + s * a * (.98 - Math.max(0, -turn * s) * .08) + turn * a * .1, y = cy + b * .06;
+    ctx.beginPath(); ctx.ellipse(x, y, a * .16, b * .21, 0, 0, TAU); fillS(ctx, spec.skin, 18);
+    ctx.beginPath(); ctx.arc(x + s * a * .02, y, a * .08, s > 0 ? -1.2 : Math.PI - 1.9, s > 0 ? 1.9 : Math.PI + 1.2); stroke(ctx, 8, 'rgba(70,25,30,.45)');
+  }
+}
 function drawHead(ctx, spec, P, cx, cy, a, b, old, look) {
   ctx.save();
   ctx.translate(cx, cy + b); ctx.rotate(P.tilt || 0); ctx.translate(-cx, -cy - b);
-  const hair = spec.hair, hc = spec.hairCol || '#1f1820';
+  const hair = spec.hair === 'spiky' ? 'tousled' : spec.hair, hc = spec.hairCol || '#1f1820';
+  const turn = clamp(P.turn || 0, -1, 1), dx = turn * a * .22;
   const hp = () => headPath(ctx, cx, cy, a, b);
-  // back hair / hijab
-  if (hair === 'bun') { ctx.beginPath(); ctx.arc(cx, cy - b - 45, 100, 0, TAU); fillS(ctx, hc, 20); sheen(ctx, cx - 30, cy - b - 70, 50, hc); }
-  if (hair === 'bob' || hair === 'long') { const L = hair === 'long' ? 1.15 : .45; ctx.beginPath(); ctx.moveTo(cx - a * 1.1, cy - b * .2); ctx.quadraticCurveTo(cx - a * 1.18, cy + b * L, cx - a * .95, cy + b * (L + .15)); ctx.lineTo(cx + a * .95, cy + b * (L + .15)); ctx.quadraticCurveTo(cx + a * 1.18, cy + b * L, cx + a * 1.1, cy - b * .2); ctx.closePath(); fillS(ctx, hc, 20); }
+  // behind the head
+  if (hair === 'bun') { const bx = cx + dx * .5, by = cy - b - 30; ctx.beginPath(); ctx.arc(bx, by, 98, 0, TAU); ctx.lineWidth = 34; ctx.strokeStyle = INK; ctx.stroke(); ctx.fillStyle = lighten(hc, .1); ctx.fill(); ctx.beginPath(); ctx.arc(bx, by, 60, Math.PI * 1.1, Math.PI * 1.9); stroke(ctx, 6, 'rgba(10,0,10,.25)'); ctx.beginPath(); ctx.arc(bx - 25, by - 35, 30, Math.PI * 1.1, Math.PI * 1.6); stroke(ctx, 10, 'rgba(255,255,255,.35)'); }
   if (hair === 'hijab') {
     const hj = spec.hijabCol || '#2f8f98';
-    const back = () => { headPath(ctx, cx, cy + 10, a * 1.2, b * 1.22, 2.4); };
-    ctx.beginPath(); ctx.moveTo(cx - a * 1.12, cy + b * .2); ctx.quadraticCurveTo(cx - a * 1.05, cy + b * 1.65, cx - a * .3, cy + b * 1.75); ctx.lineTo(cx + a * .3, cy + b * 1.75); ctx.quadraticCurveTo(cx + a * 1.05, cy + b * 1.65, cx + a * 1.12, cy + b * .2); ctx.closePath(); fillS(ctx, hj, 20);
-    shade(ctx, () => { ctx.beginPath(); ctx.rect(cx - a * 1.3, cy, a * 2.6, b * 1.8); }, cx - a * 1.2, cx + a * 1.2, cy, cy + b * 1.8, .22);
+    const back = () => { headPath(ctx, cx + dx * .2, cy + 10, a * 1.2, b * 1.22, 2.4); };
+    const drape = () => { ctx.beginPath(); ctx.moveTo(cx - a * 1.12, cy + b * .2); ctx.quadraticCurveTo(cx - a * 1.05, cy + b * 1.65, cx - a * .3, cy + b * 1.75); ctx.lineTo(cx + a * .3, cy + b * 1.75); ctx.quadraticCurveTo(cx + a * 1.05, cy + b * 1.65, cx + a * 1.12, cy + b * .2); ctx.closePath(); };
+    drape(); fillS(ctx, hj, 20); shade(ctx, drape, cx - a * 1.2, cx + a * 1.2, cy, cy + b * 1.8, .22); drape(); stroke(ctx, 20);
     back(); fillS(ctx, hj, 20); shade(ctx, back, cx - a * 1.2, cx + a * 1.2, cy - b * 1.3, cy + b * 1.3, .24);
-    sheen(ctx, cx - a * .55, cy - b * .95, 110, hj);
-  }
+    ctx.save(); back(); ctx.clip(); ctx.beginPath(); ctx.ellipse(cx - a * .5, cy - b * 1.0, a * .35, b * .1, -.4, 0, TAU); ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fill(); ctx.restore();
+  } else if (spec.ears !== false) ears(ctx, spec, cx, cy, a, b, turn);
   // skin
   hp(); ctx.fillStyle = spec.skin; ctx.fill();
-  shade(ctx, hp, cx - a, cx + a, cy - b, cy + b, .2);
+  shade(ctx, hp, cx - a, cx + a, cy - b, cy + b, .2, turn < -.2 ? -1 : 1);
   hp(); stroke(ctx, 20);
-  // face
-  drawFace(ctx, spec, P, cx, cy, a, b, old, look);
+  // face, shifted toward where the head turns
+  ctx.save(); ctx.translate(dx, 0); drawFace(ctx, spec, P, cx, cy, a * (1 - Math.abs(turn) * .08), b, old, look); ctx.restore();
   // front hair
-  if (hair === 'bun' || hair === 'bob' || hair === 'short' || hair === 'spiky' || hair === 'long') {
-    const fr = () => {
-      ctx.beginPath(); ctx.moveTo(cx - a * 1.05, cy + (hair === 'bun' ? -b * .05 : b * .05));
-      if (hair === 'bun') { ctx.quadraticCurveTo(cx - a * .7, cy - b * .55, cx - a * .1, cy - b * .5); ctx.quadraticCurveTo(cx + a * .5, cy - b * .62, cx + a * 1.05, cy - b * .02); }
-      else if (hair === 'bob' || hair === 'long') { ctx.quadraticCurveTo(cx - a * .85, cy - b * .45, cx - a * .35, cy - b * .5); ctx.quadraticCurveTo(cx + a * .2, cy - b * .3, cx + a * .45, cy - b * .55); ctx.quadraticCurveTo(cx + a * .9, cy - b * .45, cx + a * 1.05, cy + b * .05); }
-      else { ctx.quadraticCurveTo(cx - a * .8, cy - b * .5, cx - a * .3, cy - b * .55); ctx.lineTo(cx - a * .1, cy - b * .4); ctx.lineTo(cx + a * .15, cy - b * .58); ctx.lineTo(cx + a * .35, cy - b * .45); ctx.quadraticCurveTo(cx + a * .9, cy - b * .55, cx + a * 1.05, cy + b * .0); }
-      ctx.lineTo(cx + a * 1.3, cy - b * 1.6); ctx.lineTo(cx - a * 1.3, cy - b * 1.6); ctx.closePath();
-    };
-    ctx.save(); headPath(ctx, cx, cy - 4, a * 1.03, b * 1.03); ctx.clip(); fr(); ctx.fillStyle = hc; ctx.fill(); ctx.restore();
-    ctx.save(); headPath(ctx, cx, cy - 4, a * 1.03, b * 1.03); ctx.clip(); fr(); stroke(ctx, 18); ctx.restore();
-    if (hair === 'spiky') for (let i = 0; i < 6; i++) { const x = cx - a * .75 + i * a * .3; ctx.beginPath(); ctx.moveTo(x - 40, cy - b * .9); ctx.lineTo(x + 5, cy - b * 1.22 - (i % 2) * 20); ctx.lineTo(x + 45, cy - b * .88); fillS(ctx, hc, 16); }
-    headPath(ctx, cx, cy - 4, a * 1.03, b * 1.03); ctx.save(); ctx.clip(); ctx.restore();
-    sheen(ctx, cx - a * .45, cy - b * .78, 120, hc);
-  }
-  if (hair === 'peci') { // velvet cap sitting on the head, a little hair showing at the temples
-    for (const s of [-1, 1]) { ctx.save(); hp(); ctx.clip(); ctx.beginPath(); ctx.ellipse(cx + s * a * .92, cy - b * .3, a * .16, b * .3, 0, 0, TAU); ctx.fillStyle = hc; ctx.fill(); stroke(ctx, 12); ctx.restore(); }
-    hp(); stroke(ctx, 20);
-    ctx.beginPath(); ctx.moveTo(cx - a * .86, cy - b * .5); ctx.lineTo(cx - a * .8, cy - b * 1.08); ctx.quadraticCurveTo(cx, cy - b * 1.2, cx + a * .8, cy - b * 1.08); ctx.lineTo(cx + a * .86, cy - b * .5); ctx.quadraticCurveTo(cx, cy - b * .62, cx - a * .86, cy - b * .5); fillS(ctx, '#1a1418', 18);
-    ctx.beginPath(); ctx.moveTo(cx - a * .55, cy - b * .98); ctx.quadraticCurveTo(cx - a * .1, cy - b * 1.06, cx + a * .25, cy - b * 1.02); stroke(ctx, 10, 'rgba(255,255,255,.35)');
-  }
-  if (hair === 'hijab') { // front band over the forehead
+  if (hair === 'peci') {
+    hairMass(ctx, 'peci', cx, cy, a, b, hc, dx * .3);
+    ctx.beginPath(); ctx.moveTo(cx - a * .86 + dx * .3, cy - b * .5); ctx.lineTo(cx - a * .8 + dx * .3, cy - b * 1.08); ctx.quadraticCurveTo(cx + dx * .3, cy - b * 1.2, cx + a * .8 + dx * .3, cy - b * 1.08); ctx.lineTo(cx + a * .86 + dx * .3, cy - b * .5); ctx.quadraticCurveTo(cx + dx * .3, cy - b * .62, cx - a * .86 + dx * .3, cy - b * .5); fillS(ctx, '#1a1418', 18);
+    ctx.beginPath(); ctx.moveTo(cx - a * .55, cy - b * .98); ctx.quadraticCurveTo(cx - a * .1, cy - b * 1.06, cx + a * .25, cy - b * 1.02); stroke(ctx, 10, 'rgba(255,255,255,.3)');
+  } else if (hair === 'hijab') {
     const hj = spec.hijabCol || '#2f8f98';
-    ctx.save(); hp(); ctx.clip(); ctx.beginPath(); ctx.moveTo(cx - a * 1.1, cy - b * .05); ctx.quadraticCurveTo(cx, cy - b * .78, cx + a * 1.1, cy - b * .05); ctx.lineTo(cx + a * 1.2, cy - b * 1.3); ctx.lineTo(cx - a * 1.2, cy - b * 1.3); ctx.closePath(); ctx.fillStyle = hj; ctx.fill(); stroke(ctx, 18); ctx.restore();
+    ctx.save(); hp(); ctx.clip(); ctx.beginPath(); ctx.moveTo(cx - a * 1.1, cy - b * .05); ctx.quadraticCurveTo(cx + dx * .5, cy - b * .78, cx + a * 1.1, cy - b * .05); ctx.lineTo(cx + a * 1.2, cy - b * 1.3); ctx.lineTo(cx - a * 1.2, cy - b * 1.3); ctx.closePath(); ctx.fillStyle = hj; ctx.fill(); stroke(ctx, 18); ctx.restore();
     hp(); stroke(ctx, 20);
-  }
+  } else hairMass(ctx, hair, cx, cy, a, b, hc, dx * .35);
   // sweat / tears
   if (P.sweat > 0) { const x = cx + a * .98, y = cy - b * .35 + (1 - P.sweat) * -20; ctx.save(); ctx.globalAlpha = P.sweat; ctx.beginPath(); ctx.moveTo(x, y - 45); ctx.quadraticCurveTo(x + 32, y + 5, x, y + 26); ctx.quadraticCurveTo(x - 32, y + 5, x, y - 45); fillS(ctx, '#8fd8ff', 10); ctx.restore(); }
-  if (P.tears > 0) for (const s of [-1, 1]) { ctx.save(); ctx.globalAlpha = P.tears; ctx.beginPath(); ctx.moveTo(cx + s * a * .33, cy + 30); ctx.quadraticCurveTo(cx + s * a * .4, cy + b * .5, cx + s * a * .35, cy + b * .9); stroke(ctx, 22, '#8fd8ff'); ctx.restore(); }
+  if (P.tears > 0) for (const s of [-1, 1]) { ctx.save(); ctx.globalAlpha = P.tears; ctx.beginPath(); ctx.moveTo(cx + dx + s * a * .33, cy + 30); ctx.quadraticCurveTo(cx + dx + s * a * .4, cy + b * .5, cx + dx + s * a * .35, cy + b * .9); stroke(ctx, 22, '#8fd8ff'); ctx.restore(); }
   ctx.restore();
-}
-function sheen(ctx, x, y, r, base) { // the white streak on hair
-  ctx.save(); ctx.globalAlpha = .85; ctx.beginPath(); ctx.arc(x + r * .6, y + r * .9, r, Math.PI * 1.15, Math.PI * 1.45); stroke(ctx, 12, '#ffffff'); ctx.beginPath(); ctx.arc(x + r * .6, y + r * .9, r * .78, Math.PI * 1.2, Math.PI * 1.32); stroke(ctx, 8, 'rgba(255,255,255,.7)'); ctx.restore();
 }
 function drawFace(ctx, spec, P, cx, cy, a, b, old, look) {
   const ey = cy - b * .02, ex = a * .34, eyes = P.eyes || 'open', blink = P.blink || 0;
@@ -235,6 +303,22 @@ function drawFace(ctx, spec, P, cx, cy, a, b, old, look) {
   else if (m === 'teeth') { ctx.beginPath(); ctx.roundRect(cx - 52, my - 20, 104, 44, 10); fillS(ctx, '#fbfbf7', 11); for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(cx + i * 18, my - 20); ctx.lineTo(cx + i * 18, my + 24); stroke(ctx, 6); } ctx.beginPath(); ctx.moveTo(cx - 52, my + 2); ctx.lineTo(cx + 52, my + 2); stroke(ctx, 6); }
 }
 
+// ---------- body poses: spread into set({...POSE.wave(t), eyes: 'happy'}) ----------
+export const POSE = {
+  hang:   { armL: [.18, -.1], armR: [.18, -.1] },
+  wave:   t => ({ armL: [.18, -.1], armR: [2.55 + Math.sin(t * 9) * .28, .35] }),
+  point:  { armL: [.18, -.1], armR: [1.5, .05] },          // pointing to the character's left (screen right); flip for the other way
+  hips:   { armL: [.85, -2.0], armR: [.85, -2.0] },
+  cup:    { armL: [.55, -2.05], armR: [.55, -2.05] },      // hands together in front of the chest
+  carry:  { armL: [.35, -1.25], armR: [.35, -1.25] },      // holding something in front
+  cheer:  { armL: [2.7, .15], armR: [2.7, .15] },
+  shrug:  { armL: [.9, 1.9], armR: [.9, 1.9] },
+  scared: { armL: [.5, -1.6], armR: [.5, -1.6] },
+  think:  { armL: [.18, -.1], armR: [.35, -2.5] },
+  phone:  { armL: [.18, -.1], armR: [.45, -2.2] },          // hand raised in front, for a phone or a cup
+};
+const handDesign = (spec, P, side) => { const s = side === 'L' ? -1 : 1, arm = (side === 'L' ? P.armL : P.armR) || [.18, -.1]; let p = limb(500 + s * 205, spec.kid ? 720 : 690, s, arm[0], arm[1], 210, 190)[2]; if (P.flip) p = [DW - p[0], p[1]]; return [p[0], p[1] + (P.bob || 0) * 40]; };
+
 // ---------- the 3D card ----------
 export class Person {
   // scene: from makeScene().scene; spec: LOOKS.x or your own; o: { x, z, h (metres, feet to crown), rot }
@@ -252,6 +336,8 @@ export class Person {
   }
   set(P) { this.P = P; return this; }
   at(x, z, y = 0) { this.mesh.position.set(x, y, z); return this; }
+  // world position of a hand ('L' or 'R'), for props held in the hand
+  hand3(side = 'R') { const [x, y] = handDesign(this.spec, this.P, side), d = (x - 500) * this.k, r = this.mesh.rotation.y, m = this.mesh.position; return [m.x + Math.cos(r) * d, m.y + (FEET - y) * this.k, m.z - Math.sin(r) * d]; }
   // world position of the face, handy for aiming the camera
   face3() { const p = this.mesh.position; return [p.x, p.y + (FEET - (this.spec.kid ? 430 : 390)) * this.k, p.z]; }
   face(cam) {
