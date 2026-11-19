@@ -1,0 +1,107 @@
+---
+name: klip-windah
+description: Editor klip streaming Windah Basudara main GTA VI. Pengguna mengirim rekaman layar potongan stream, Claude menganalisis, bertanya seperlunya (posisi cam, format, momen), lalu merender editan siap posting - format TikTok 9:16 (split gameplay + cam besar, kotak judul hook ungu-pink, glitch, speed lines anime, impact, SFX) atau format kotak (frame stream utuh dengan cam asli di tengah latar hitam, caption punchline statis, punch-in ke wajah). Tanpa voice-over - murni momen. Pakai setiap kali pengguna mengirim rekaman/klip Windah atau GTA VI dan minta diedit, "bikin editan", "edit klip ini", "jadikan tiktok", "bikin versi 1:1/kotak".
+---
+
+# klip-windah
+
+Rekaman layar masuk, editan siap posting keluar. `SKILL` = folder file ini. Perintah:
+
+```bash
+bash SKILL/scripts/klip-windah analisis VIDEO --transkrip   # info, lembar frame bergrid, usulan cam, puncak suara, transkrip
+bash SKILL/scripts/klip-windah pratinjau RENCANA.json       # gambar diam beberapa detik: cek crop SEBELUM render
+bash SKILL/scripts/klip-windah render RENCANA.json          # MP4 1080x1920, 30 fps, -14 LUFS
+bash SKILL/scripts/klip-windah sfx                          # buat ulang SFX bawaan
+```
+Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkrip memakai Whisper `small`
+(sekitar 480 MB, diunduh dari huggingface.co saat pertama dipakai).
+
+## Alur kerja (ikuti urutannya)
+1. **Pengguna mengirim rekaman.** Upload ada di `~/.claude/uploads/...`. Salin ke folder kerja
+   `hasil-klip/<nama-singkat>/` di repo ini (folder itu di-gitignore), jangan ubah file aslinya.
+2. **Analisis**: `analisis VIDEO --transkrip`. Lalu **lihat** `lembar.jpg` (Read): grid kuning menandai
+   koordinat piksel sumber setiap 10%. Catat:
+   - area stream di dalam rekaman (`stream_box`): buang UI ponsel/browser, taskbar, bar hitam. `area_konten` dari
+     cropdetect hanya membuang bar hitam;
+   - kotak cam Windah (`cam_box`): mulai dari `cam_usulan[0].usulan_cam_box`, betulkan dengan melihat lembar.
+     Bila cam berpindah atau stream ganti ke cam layar penuh di tengah video, catat detiknya;
+   - momen: puncak suara (`puncak_suara`) + transkrip = teriakan, tawa, punchline.
+3. **Tanya pengguna** (AskUserQuestion, maksimal 4 pertanyaan, sertakan apa yang kamu lihat). Yang biasanya perlu:
+   - **Format**: TikTok 9:16, kotak, atau keduanya.
+   - **Posisi cam** (TikTok): di atas atau di bawah. Pengguna bilang posisinya bervariasi - selalu tanya.
+   - **Momen/potongan**: usulkan rentang `potong` (mis. 0:12-0:58) dan sebutkan alasannya.
+   - **Judul hook** (TikTok) atau **caption punchline** (kotak): tawarkan 2-3 pilihan.
+   Jangan tanya hal yang sudah jelas dari video.
+4. **Tulis rencana** `hasil-klip/<nama>/<format>.json` (skema di bawah), jalankan `pratinjau`, **lihat** gambarnya:
+   wajah utuh di panel cam, gameplay tidak terpotong aneh, judul tidak menutupi wajah. Betulkan lalu ulangi.
+5. **Render**, lalu cek beberapa frame hasil (ffmpeg `-ss T -frames:v 1`) terutama di titik efek.
+6. **Kirim** MP4 ke pengguna dengan SendUserFile, plus ringkasan: durasi, efek di detik berapa, saran judul
+   postingan + hashtag. Tawarkan revisi (posisi, judul, efek). **Jangan pernah memposting untuk pengguna.**
+
+## Gaya (dari video referensi pengguna)
+
+### TikTok 9:16 (`"format": "tiktok"`)
+- **Split layar**: panel gameplay (default 57% tinggi, `porsi_game`) + panel cam besar (wajah dan bahu memenuhi
+  panel). `posisi_cam`: `"bawah"` (seperti referensi) atau `"atas"`. Sambungan tanpa garis.
+- **Kotak judul hook** di sambungan, 2-3 detik pertama (`judul_durasi`), lalu hilang: huruf kapital Anton, putih,
+  kotak gelap, tepi gradasi ungu ke pink. Pola kalimat referensi:
+  "BANG WINDAH BASUDARA JADI ORANG PERTAMA YANG DAPET IKAN DI GTA 6" - sebut Windah, klaim
+  superlatif/pertama/rekor atau kejadian lucu, sebut GTA 6, maksimal sekitar 12 kata, 2-3 baris, bahasa gaul.
+- **Mulai di tengah aksi** dengan kalimat Windah yang memancing rasa penasaran; durasi sekitar 30-60 detik dengan
+  alur: setup -> ketegangan -> puncak -> penutup lucu. Tidak ada caption per kata.
+- **Efek**:
+  - `glitch` (detik): pecah warna RGB + noise 0,3 detik + SFX glitch. Untuk lompatan/potongan, dan sekali saat
+    judul hilang (sekitar `judul_durasi` - 0,2) bila ingin persis referensi.
+  - `speedlines` `[[mulai, selesai, "tipis"|"tebal"]]`: garis anime putih dari tepi. **Tipis** sepanjang
+    ketegangan (menunggu, mengejar), **tebal** 1,5-2,5 detik di puncak (+ whoosh otomatis 0,35 detik sebelumnya).
+  - `impact` (detik): kilat putih + layar bergetar 0,4 detik + boom. Taruh tepat di puncak (teriakan, ledakan,
+    "LET'S GO"). Maksimal 1-2 per klip.
+  - `cam_penuh` `[[mulai, selesai]]`: potong ke wajah layar penuh untuk reaksi besar (opsional di TikTok).
+
+### Kotak (`"format": "kotak"`) - "1:1" versi referensi
+- Frame stream utuh **dengan cam asli seperti di stream** (normal), diletakkan di tengah latar hitam 9:16.
+  Referensi memotong samping ke rasio sekitar 5:4 (`"rasio_kotak": 1.25`); cam asli dijaga tetap kelihatan.
+  `null` = 16:9 utuh. Untuk benar-benar persegi pakai `1.0`.
+- **Caption punchline statis** sepanjang video (`caption`): kutipan Windah yang paling lucu, huruf kecil, diakhiri
+  "..", contoh referensi "salip aelah..". Putih kecil berbayang di tengah gambar (`caption_y` 0-1).
+- **Punch-in**: `cam_penuh` ke wajah saat tertawa/bereaksi, 1-3 detik. Boleh `impact` kecil di awal punch-in.
+- Pendek: sekitar 10-20 detik, satu lelucon.
+- `endcard`: video penutup (mis. end card resmi program clipper dari pengguna) disambung di akhir. Tanpa file
+  dari pengguna, jangan buat end card yang meniru branding program/merek mana pun.
+
+### Umum
+- **Tanpa voice-over, murni momen.** Suara stream asli dipertahankan, dinormalisasi ke -14 LUFS.
+- Watermark/sponsor dari referensi (Dunia Games, motion klip) **tidak** ditiru.
+- SFX bawaan dibuat sintetis (`sfx/bawaan/`). Bila pengguna mengirim SFX sendiri, simpan sebagai
+  `sfx/whoosh.wav`, `sfx/boom.wav`, `sfx/glitch.wav`, `sfx/riser.wav`, `sfx/klik.wav` (mp3/m4a/ogg juga bisa) -
+  otomatis dipakai menggantikan bawaan. SFX bebas: `"sfx_tambahan": [["riser", 12.0, 0.8]]` (nama, detik, volume).
+  `"volume_sfx"` mengalikan semua SFX; `"tanpa_sfx": true` mematikannya.
+
+## Skema rencana
+Semua kotak dalam **piksel video sumber** `[x, y, lebar, tinggi]`; semua detik **relatif terhadap awal `potong`**.
+```json
+{
+  "input": "hasil-klip/ikan/rekaman.mp4",
+  "output": "hasil-klip/ikan/tiktok.mp4",
+  "format": "tiktok",
+  "potong": [12.0, 70.0],
+  "stream_box": [0, 140, 1080, 608],
+  "cam_box": [820, 520, 260, 228],
+  "game_box": null,
+  "posisi_cam": "bawah",
+  "porsi_game": 0.57,
+  "judul": "Bang Windah Basudara jadi orang pertama yang dapet ikan di GTA 6",
+  "judul_durasi": 2.5,
+  "glitch": [2.3],
+  "speedlines": [[27.5, 38.5, "tipis"], [39.5, 41.5, "tebal"]],
+  "impact": [39.8],
+  "cam_penuh": [],
+  "pratinjau_detik": [1, 30, 40]
+}
+```
+Kotak: `"format": "kotak"`, `"rasio_kotak": 1.25`, `"caption": "salip aelah.."`, `"cam_penuh": [[9.0, 11.5]]`,
+opsional `"endcard": "path/endcard.mp4"`. `game_box` kosong = tengah `stream_box` dengan rasio panel.
+
+## Sebelum pengguna posting
+Ingatkan: klip hanya bila ada izin (program clipper resmi Windah atau izin langsung) dan cek ulang judul/caption.
+Jangan menaruh spoiler cerita besar GTA VI di judul tanpa peringatan.

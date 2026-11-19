@@ -1,0 +1,14 @@
+[project]
+name = "klip-windah"
+version = "0.1.0"
+description = "Skill Claude Code: rekaman layar klip GTA VI Windah Basudara jadi editan TikTok 9:16 atau kotak."
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.26",
+  "opencv-python-headless>=4.8,<5",
+  "pillow>=10",
+  "faster-whisper>=1.1.0",
+]
+
+[tool.uv]
+package = false

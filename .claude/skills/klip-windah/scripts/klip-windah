@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# klip-windah: jalankan dengan environment Python skill ini sendiri (uv).
+HERE="$(cd "$(dirname "$0")/.." && pwd)"
+if ! command -v uv >/dev/null 2>&1; then
+  echo "uv belum terpasang. Mac: brew install uv  ·  Windows: winget install astral-sh.uv" >&2
+  exit 1
+fi
+export PYTHONUTF8=1
+exec uv run --quiet --project "$HERE" python -I "$HERE/scripts/windah.py" "$@"
