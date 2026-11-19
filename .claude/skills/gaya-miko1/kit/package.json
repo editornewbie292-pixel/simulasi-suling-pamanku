@@ -1,0 +1,9 @@
+{
+  "name": "gaya-miko1-kit",
+  "private": true,
+  "description": "Node packages /gaya-miko1 renders with. Installed by kit/setup.sh into ~/.cache/gaya-miko1/kit.",
+  "dependencies": {
+    "playwright": "1.49.1",
+    "three": "0.169.0"
+  }
+}

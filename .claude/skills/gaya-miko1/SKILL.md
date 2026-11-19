@@ -11,24 +11,25 @@ drawn in 2D and stand in it as camera-facing cards that take the scene's light a
 
 `engine/template` is a finished example: "Kunang-kunang" (8 shots, about 25 s).
 
-## Setup (once per machine)
+## Setup (once per session or machine)
 ```bash
 SKILL_DIR="<base directory of this skill>"; ENGINE="$SKILL_DIR/engine"
-KIT=$(python -c 'import os,sys;print(os.path.realpath(os.path.join(sys.argv[1],"..","..","kit")))' "$SKILL_DIR")
-[ -x "$KIT/.venv/bin/python" ] && [ -d "$KIT/models" ] || bash "$KIT/setup.sh" --voice
-"$KIT/.venv/bin/python" -c "import faster_whisper" 2>/dev/null || "$KIT/.venv/bin/python" -m pip install -q faster-whisper
+export KIT="${KIT:-$HOME/.cache/gaya-miko1/kit}"      # a repo-level .claude/kit with node_modules also works
+bash "$SKILL_DIR/kit/setup.sh"                         # idempotent: three.js, Playwright, faster-whisper (+ --draft for the draft voice)
 PY="$KIT/.venv/bin/python"; export NODE_PATH="$KIT/node_modules"
+[ -x /opt/pw-browsers/chromium ] && export CHROME=/opt/pw-browsers/chromium
 ```
-- Word timing uses faster-whisper (`small`, Indonesian). The first run downloads the model from
-  huggingface.co into `$KIT/models/hf`. In a cloud session, the network must allow huggingface.co,
+- The skill folder can be read-only: everything heavy installs into `$KIT` (default `~/.cache/gaya-miko1/kit`).
+  `make.sh` runs the setup by itself when the kit is missing.
+- Word timing uses faster-whisper (`small`, Indonesian). The first align downloads the model (~460 MB)
+  from Hugging Face into `$KIT/models/hf`. In a cloud session the network must allow huggingface.co,
   cas-server.xethub.hf.co, cas-bridge.xethub.hf.co and us.aws.cdn.hf.co.
-- Rendering uses WebGL through SwiftShader. In this container set `CHROME=/opt/pw-browsers/chromium`.
-- Needs ffmpeg, Node and Python 3.9+.
+- Rendering uses WebGL through SwiftShader (no GPU needed). Needs node/npm, python3 and ffmpeg.
 
 ## Voice
 - **Final reels use the user's Indonesian voiceover** (ElevenLabs or a recording). Ask for the file.
 - For timing drafts before the voiceover exists: `make.sh <reel> draft` (free Kokoro voice reading
-  Indonesian with a foreign accent). Say clearly that it's a placeholder.
+  Indonesian with a foreign accent; installs ~340 MB the first time). Say clearly that it's a placeholder.
 - Shots are timed with `T('kata')` / `L(i)` from the aligned words, so when the real voiceover arrives,
   `make.sh <reel> voice.mp3` re-times every shot by itself. The script text must match the voiceover.
 

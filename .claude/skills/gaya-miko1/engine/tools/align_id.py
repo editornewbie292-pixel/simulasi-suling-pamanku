@@ -4,9 +4,8 @@
 # The Whisper model is cached in kit/models/hf (needs huggingface.co the first time).
 import json, re, difflib, os, sys, numpy as np, soundfile as sf
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-KIT = os.environ.get('KIT') or os.path.realpath(os.path.join(ROOT, "..", "..", "..", "kit"))
-kp = os.path.join(ROOT, 'kitpath.txt')
-if not os.path.isdir(os.path.join(KIT, 'models')) and os.path.exists(kp): KIT = open(kp).read().strip()
+KIT = os.environ.get('KIT') or os.path.realpath(os.path.join(ROOT, '..', '..', '..', 'kit'))
+if not os.path.isdir(os.path.join(KIT, 'node_modules', 'three')) and not os.environ.get('KIT'): KIT = os.path.expanduser('~/.cache/gaya-miko1/kit')
 os.environ.setdefault('HF_HOME', os.path.join(KIT, 'models', 'hf'))
 from faster_whisper import WhisperModel
 

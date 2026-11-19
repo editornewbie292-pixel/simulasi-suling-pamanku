@@ -9,16 +9,19 @@
 #   AUDIO_ONLY=1 make.sh .. remix the sound only (reuses the last picture)
 set -euo pipefail
 ENGINE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-KIT="$(cd "$ENGINE/../../../kit" 2>/dev/null && pwd || true)"
-[ -d "$KIT/node_modules" ] || { [ -s "$ENGINE/kitpath.txt" ] && KIT="$(tr -d '\r\n' < "$ENGINE/kitpath.txt")"; }
+# kit (node packages, Python venv, models): $KIT, else a repo-level .claude/kit, else ~/.cache/gaya-miko1/kit
+if [ -z "${KIT:-}" ]; then
+  KIT="$(cd "$ENGINE/../../../kit" 2>/dev/null && pwd || true)"
+  [ -d "$KIT/node_modules/three" ] || KIT="$HOME/.cache/gaya-miko1/kit"
+fi
 export KIT
+[ -d "$KIT/node_modules/three" ] && [ -x "$KIT/.venv/bin/python" ] || bash "$ENGINE/../kit/setup.sh"
+[ -z "${CHROME:-}" ] && [ -x /opt/pw-browsers/chromium ] && export CHROME=/opt/pw-browsers/chromium
 DIR="$(cd "${1:?usage: make.sh <reel-folder> [voiceover-file|draft]}" && pwd)"
 VOICE="${2:-keep}"
 WORKERS="${WORKERS:-4}"
 export FPS="${FPS:-30}"
 PY="$KIT/.venv/bin/python"
-[ -x "$PY" ] || { echo "the voice tools aren't set up: run  bash $KIT/setup.sh --voice"; exit 1; }
-"$PY" -c "import faster_whisper" 2>/dev/null || "$PY" -m pip install -q faster-whisper
 export NODE_PATH="$KIT/node_modules"
 NAME="$(basename "$DIR")"
 cd "$DIR"; mkdir -p audio
@@ -26,7 +29,8 @@ cd "$DIR"; mkdir -p audio
 echo "== voice: $VOICE"
 case "$VOICE" in
   keep)  [ -f audio/vo.wav ] || { echo "no audio/vo.wav yet: pass the voiceover file (or 'draft')"; exit 1; } ;;
-  draft) "$PY" "$ENGINE/tools/tts_draft.py"; cp audio/vo_draft.wav audio/vo.wav ;;
+  draft) [ -s "$KIT/models/kokoro-v1.0.onnx" ] || bash "$ENGINE/../kit/setup.sh" --draft
+         "$PY" "$ENGINE/tools/tts_draft.py"; cp audio/vo_draft.wav audio/vo.wav ;;
   *)     ffmpeg -v error -y -i "$VOICE" -ac 1 -ar 44100 audio/vo.wav ;;
 esac
 ffmpeg -v error -y -i audio/vo.wav -af "silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse" audio/vo_trim.wav && mv audio/vo_trim.wav audio/vo.wav
