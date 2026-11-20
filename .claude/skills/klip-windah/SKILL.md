@@ -119,6 +119,13 @@ pertama, kalimat hook bercerita kontras, caption di setiap ucapan, transisi flas
   SFX otomatis (whoosh, boom, glitch, whoosh). `audio_asli: [a, b]` = cuplikan suara asli Windah (detik sumber)
   diputar di bawah kartu, mis. kalimat sesumbarnya. `naik_wajah` (bawaan 0,74) menaikkan wajah bila tertutup teks.
   Pola teks hook: lihat daftar di bawah; jangan hanya "dulu vs sekarang".
+  **Wajib 2 gambar** (permintaan pengguna): Windah + 1 elemen pendukung dari game lewat `"elemen"`:
+  `{"detik": t, "box": [x,y,w,h], "gaya": "cutout"|"kartu", "model": "isnet-general-use" (objek/makhluk) |
+  "u2net_human_seg" (orang/NPC), "lebar": px, "x": 0-1, "naik": 0-1, "miring": derajat, "ambang": 0-255}`.
+  Cutout untuk objek yang kontras (Bigfoot, NPC); `kartu` (foto berbingkai miring) untuk yang sulit dipotong
+  (asap, langit, pesawat kecil - perketat box ke objeknya). Latar kartu hook jangan adegan yang sama dengan
+  elemen (objek jadi menyatu); pilih ekspresi wajah Windah paling hidup (cek 3-4 frame cam). Pratinjau cepat:
+  `klip-windah hook RENCANA.json` -> `<rencana>_hook.jpg`.
 - `"caption_frasa": true`: transkrip timeline hasil (Whisper small, waktu per kata) jadi frasa 2-4 kata ke
   `<rencana>_caption.json`, lalu ditampilkan (Anton putih, outline hitam + bayangan) di sisi cam dekat sambungan
   (TikTok) / tepi bawah gambar (kotak). **Selalu baca dan koreksi file caption itu sebelum render final**:

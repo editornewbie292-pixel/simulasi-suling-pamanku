@@ -909,16 +909,66 @@ def gambar_caption_frasa(teks, path, size=64, maxw=W - 140):
 
 
 # ---------------------------------------------------------------- kartu hook
-_rembg_sesi = None
+_rembg_sesi = {}
 
 
-def cutout(img):
+def cutout(img, model="u2net_human_seg"):
     """Hapus latar (rembg u2net_human_seg, sekitar 170 MB diunduh sekali)."""
-    global _rembg_sesi
     from rembg import remove, new_session
-    if _rembg_sesi is None:
-        _rembg_sesi = new_session("u2net_human_seg")
-    return remove(img.convert("RGB"), session=_rembg_sesi).convert("RGBA")
+    if model not in _rembg_sesi:
+        _rembg_sesi[model] = new_session(model)
+    return remove(img.convert("RGB"), session=_rembg_sesi[model]).convert("RGBA")
+
+
+def buat_elemen(src, t, el):
+    """Elemen pendukung kartu hook (mis. Bigfoot, pesawat): 'cutout' (latar dihapus, bingkai putih)
+    atau 'kartu' (foto berbingkai putih, sedikit miring). Hasil RGBA dengan bayangan."""
+    from PIL import ImageFilter
+    fr = ambil_frame_sumber(src, t)
+    x, y, w, h = el["box"]
+    im = fr.crop((x, y, x + w, y + h))
+    lebar = int(el.get("lebar", 560))
+    if el.get("gaya", "cutout") == "cutout":
+        im = cutout(im, el.get("model", "isnet-general-use"))
+        # alpha tegas + hanya objek terbesar (tanpa sisa latar transparan seperti hantu)
+        import cv2
+        a = np.array(im.getchannel("A"))
+        biner = (a > int(el.get("ambang", 100))).astype(np.uint8)
+        n, lab, st, _ = cv2.connectedComponentsWithStats(biner, 8)
+        if n > 1:
+            terbesar = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
+            biner = (lab == terbesar).astype(np.uint8)
+        biner = cv2.morphologyEx(biner, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+        im.putalpha(Image.fromarray((biner * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1)))
+        bb = im.getchannel("A").getbbox()
+        if bb:
+            im = im.crop(bb)
+        im = im.resize((lebar, int(im.height * lebar / im.width)), Image.LANCZOS)
+        a = im.getchannel("A")
+        garis = a.filter(ImageFilter.MaxFilter(13))
+        lap = Image.new("RGBA", (im.width + 50, im.height + 50), (0, 0, 0, 0))
+        bay = Image.new("RGBA", lap.size, (0, 0, 0, 0))
+        bay.paste((0, 0, 0, 160), (31, 37), garis)
+        lap.alpha_composite(bay.filter(ImageFilter.GaussianBlur(12)))
+        lap.paste((255, 255, 255, 255), (25, 25), garis)
+        lap.alpha_composite(im, (25, 25))
+    else:
+        im = im.convert("RGBA").resize((lebar, int(h * lebar / w)), Image.LANCZOS)
+        b = 12
+        kartu = Image.new("RGBA", (im.width + 2 * b, im.height + 2 * b), (255, 255, 255, 255))
+        kartu.alpha_composite(im, (b, b))
+        m = Image.new("L", kartu.size, 0)
+        ImageDraw.Draw(m).rounded_rectangle([0, 0, kartu.width - 1, kartu.height - 1], 22, fill=255)
+        kartu.putalpha(m)
+        lap = Image.new("RGBA", (kartu.width + 60, kartu.height + 60), (0, 0, 0, 0))
+        bay = Image.new("RGBA", lap.size, (0, 0, 0, 0))
+        bay.paste((0, 0, 0, 170), (36, 42), m)
+        lap.alpha_composite(bay.filter(ImageFilter.GaussianBlur(14)))
+        lap.alpha_composite(kartu, (30, 30))
+    sudut = float(el.get("miring", 4 if el.get("gaya") == "kartu" else 0))
+    if sudut:
+        lap = lap.rotate(sudut, resample=Image.BICUBIC, expand=True)
+    return lap
 
 
 def ambil_frame_sumber(src, t):
@@ -988,7 +1038,8 @@ def buat_hook(rencana, tmp):
     bb = wj.getchannel("A").getbbox()
     if bb:
         wj = wj.crop(bb)
-    lebar_wajah = int(hk.get("lebar_wajah", 880))
+    el = hk.get("elemen")
+    lebar_wajah = int(hk.get("lebar_wajah", 640 if el else 880))
     wj = wj.resize((lebar_wajah, int(wj.height * lebar_wajah / wj.width)), Image.LANCZOS)
     # bagian bawah memudar (potongan cam lurus tidak terlihat kaku)
     pudar = Image.linear_gradient("L").resize((wj.width, wj.height))
@@ -1005,7 +1056,16 @@ def buat_hook(rencana, tmp):
     depan = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     # wajah di atas teks: teks hanya menutupi dada/tangan (seperti referensi)
     wy_wajah = int(hk.get("y_wajah", ty - lapis.height * float(hk.get("naik_wajah", 0.74))))
-    depan.alpha_composite(lapis, ((W - lapis.width) // 2, max(300, wy_wajah)))
+    if el:
+        # dua gambar: elemen pendukung di kanan (di belakang), Windah di kiri (di depan)
+        eimg = buat_elemen(src, t0 + float(el.get("detik", hk.get("detik_latar", 0))), el)
+        ex = int(W * float(el.get("x", 0.70)) - eimg.width / 2)
+        ey = int(el.get("y", ty - eimg.height * float(el.get("naik", 0.8))))
+        depan.alpha_composite(eimg, (max(-40, min(W - eimg.width + 40, ex)), max(260, ey)))
+        wx = int(W * float(hk.get("x_wajah", 0.30)) - lapis.width / 2)
+        depan.alpha_composite(lapis, (max(-30, wx), max(300, wy_wajah)))
+    else:
+        depan.alpha_composite(lapis, ((W - lapis.width) // 2, max(300, wy_wajah)))
     depan.alpha_composite(teks_img)
 
     # watermark program (wajib) di safe zone atas
@@ -1200,11 +1260,21 @@ def main():
     r = sp.add_parser("render")
     r.add_argument("rencana")
     sp.add_parser("sfx")
+    hk_ = sp.add_parser("hook")
+    hk_.add_argument("rencana")
     c = sp.add_parser("camhd")
     c.add_argument("rencana")
     t = sp.add_parser("thumbnail")
     t.add_argument("rencana")
     args = ap.parse_args()
+    if args.cmd == "hook":  # pratinjau kartu hook saja (gambar di detik 1,3)
+        r = json.loads(Path(args.rencana).read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as td:
+            v = buat_hook(r, Path(td))
+            out = Path(args.rencana).with_name(Path(args.rencana).stem + "_hook.jpg")
+            run(["ffmpeg", "-v", "error", "-y", "-ss", "1.3", "-i", v, "-frames:v", "1", "-q:v", "3", out], quiet=True)
+        print("Pratinjau hook:", out)
+        return
     if args.cmd == "camhd":
         r = json.loads(Path(args.rencana).read_text(encoding="utf-8"))
         return buat_cam_hd(r, Path(args.rencana).with_name(Path(args.rencana).stem + "_camhd.mp4"))
