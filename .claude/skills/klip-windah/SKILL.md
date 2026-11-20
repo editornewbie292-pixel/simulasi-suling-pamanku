@@ -30,6 +30,10 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
      (ledakan, layar WASTED), cari lonjakan warna/beda frame dengan OpenCV, jangan menebak dari lembar.
    - **gangguan rekaman**: notifikasi ponsel, pop-up aplikasi, kursor. Tutup dengan `tutup` (diburamkan).
    - **akhir rekaman**: buang layar hitam/kosong di ujung; akhiri tepat sebelum gambar game hilang.
+   - **perfect cut**: bagian yang mengganggu (notifikasi, jeda kosong) lebih baik DIBUANG (`buang`) daripada
+     diburamkan. Pilih titik potong di gambar yang diam/sama di kedua sisi (mis. tulisan WASTED tetap di tempat)
+     dan cek dengan frame sebelum/sesudah; tanpa transisi atau glitch di sambungan. Bila pengguna menyebut
+     rentang kira-kira, cek frame-nya dan geser sedikit bila perlu (sebutkan alasannya).
    - Rekaman layar ponsel sering menyimpan rotasi di metadata: `info.w/h` sudah ukuran tampil; pakai itu.
 3. **Tanya pengguna** (AskUserQuestion, maksimal 4 pertanyaan, sertakan apa yang kamu lihat). Yang biasanya perlu:
    - **Format**: TikTok 9:16, kotak, atau keduanya.
@@ -81,8 +85,9 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
 ### Umum
 - **Watermark motion klip selalu dipasang** (`assets/watermark/motionklip.png`, banner lebar penuh) di **safe zone**
   TikTok/Reels/Shorts: tidak di 150 px teratas dan tidak di 480 px terbawah (area caption, username, tombol).
-  - TikTok: menempel di sambungan, di sisi panel game, supaya tidak menutupi wajah maupun momen di tengah game.
-    Kotak judul otomatis digeser ke sisi cam agar tidak menumpuk.
+  - TikTok: **di sela facecam dan gameplay** (titik tengahnya tepat di sambungan), 68% lebar layar, opacity 0,88 -
+    jangan di atas gameplay. Kotak judul otomatis naik/turun ke sisi cam supaya tidak menumpuk.
+    Atur dengan `"watermark_lebar"` (piksel) dan `"watermark_opacity"` (0-1) asal tetap terbaca.
   - Kotak: tepat di atas gambar, di latar hitam (judul, bila ada, pindah ke bawah gambar).
   - `"watermark_y"` (titik tengah) untuk memindah, `"watermark": null` untuk mematikan.
 - **Emoji** di judul/teks didukung (font Noto Color Emoji sistem; di Windows Segoe UI Emoji).
@@ -123,6 +128,8 @@ Semua kotak dalam **piksel video sumber** `[x, y, lebar, tinggi]`; semua detik *
   }
 }
 ```
+`buang`: `[[a, b], ...]` rentang yang dihapus, dalam detik **sumber** relatif awal `potong`; semua detik efek
+lain (`glitch`, `impact`, `speedlines`, `cam_penuh`, `tutup`) memakai timeline **hasil** setelah dibuang.
 `tutup`: `[x, y, w, h, mulai, selesai]` area sumber yang diburamkan. Thumbnail: `fokus_cam_y` 0-1 menggeser wajah
 (besar = wajah naik), `fokus_game_x/y`, `zoom_game`, `zoom_cam`.
 Kotak: `"format": "kotak"`, `"rasio_kotak": 1.25`, `"caption": "salip aelah.."`, `"cam_penuh": [[9.0, 11.5]]`,

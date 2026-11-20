@@ -429,7 +429,18 @@ def bangun(rencana, tmp, pratinjau=None):
     src = rencana["input"]
     info = probe(src)
     t0, t1 = rencana.get("potong") or [0, info["durasi"]]
-    dur = round(t1 - t0, 3)
+    durasi_src = round(t1 - t0, 3)
+    # buang: [[a, b], ...] detik relatif awal potong (timeline SUMBER). Semua detik efek lain memakai
+    # timeline HASIL (setelah dibuang). Sambungan tanpa transisi = "perfect cut".
+    buang = sorted([float(a), float(b)] for a, b in rencana.get("buang", []))
+    simpan, pos = [], 0.0
+    for a, b in buang:
+        if a > pos:
+            simpan.append((pos, a))
+        pos = max(pos, b)
+    if pos < durasi_src:
+        simpan.append((pos, durasi_src))
+    dur = round(sum(b - a for a, b in simpan), 3)
     fmt = rencana.get("format", "tiktok")
     stream = rencana.get("stream_box") or [0, 0, info["w"], info["h"]]
     cam = rencana.get("cam_box")
@@ -438,9 +449,15 @@ def bangun(rencana, tmp, pratinjau=None):
 
     inputs, f = [], []
     if pratinjau is not None:
-        inputs += ["-ss", f"{t0 + pratinjau:.3f}", "-t", "0.2", "-i", src]
+        sisa, src_t = pratinjau, simpan[-1][1]
+        for a, b in simpan:
+            if sisa <= b - a:
+                src_t = a + sisa
+                break
+            sisa -= b - a
+        inputs += ["-ss", f"{t0 + src_t:.3f}", "-t", "0.2", "-i", src]
     else:
-        inputs += ["-ss", f"{t0:.3f}", "-t", f"{dur:.3f}", "-i", src]
+        inputs += ["-ss", f"{t0:.3f}", "-t", f"{durasi_src:.3f}", "-i", src]
     n_in = 1
 
     def tambah(*args):
@@ -453,7 +470,14 @@ def bangun(rencana, tmp, pratinjau=None):
     butuh = 2 if fmt == "tiktok" else 1
     if penuh and cam:
         butuh += 1
-    f.append(f"[0:v]fps={FPS},setpts=PTS-STARTPTS{geser}[pre0]")
+    if pratinjau is None and len(simpan) > 1:
+        n = len(simpan)
+        f.append(f"[0:v]fps={FPS},setpts=PTS-STARTPTS,split={n}" + "".join(f"[vs{k}]" for k in range(n)))
+        for k, (a, b) in enumerate(simpan):
+            f.append(f"[vs{k}]trim=start={a:.3f}:end={b:.3f},setpts=PTS-STARTPTS[vt{k}]")
+        f.append("".join(f"[vt{k}]" for k in range(n)) + f"concat=n={n}:v=1:a=0[pre0]")
+    else:
+        f.append(f"[0:v]fps={FPS},setpts=PTS-STARTPTS{geser}[pre0]")
     pre = "pre0"
     # tutup: buramkan area sumber (notifikasi ponsel, UI) [x, y, w, h, mulai, selesai]
     for k, (x, y, w, h, a, b) in enumerate(rencana.get("tutup", [])):
@@ -545,17 +569,17 @@ def bangun(rencana, tmp, pratinjau=None):
 
     # watermark program clipper - selalu di safe zone TikTok/Shorts
     # (tidak di 150 px teratas, tidak di 480 px terbawah tempat caption/username/tombol).
-    # TikTok: menempel di sambungan, di sisi panel game (momen penting game ada di tengah panel).
+    # TikTok: di sela facecam & gameplay (tengah sambungan), 68% lebar, opacity 0.88.
     # Kotak: tepat di atas gambar, di latar hitam.
     wm = rencana.get("watermark", str(WATERMARK) if WATERMARK.exists() else None)
     if wm:
         wim = Image.open(wm)
-        ww = int(rencana.get("watermark_lebar", W))
+        ww = int(rencana.get("watermark_lebar", W * 0.68 if fmt == "tiktok" else W))
         wh = even(wim.height * ww / wim.width)
         if "watermark_y" in rencana:  # titik tengah watermark
             wy = rencana["watermark_y"] - wh / 2
         elif fmt == "tiktok":
-            wy = seam + 12 if atas else seam - wh - 12
+            wy = seam - wh / 2  # di sela facecam & gameplay
         else:
             wy = konten_y - wh - 24
         wy = even(min(max(wy, SAFE_ATAS), SAFE_BAWAH - wh))
@@ -567,7 +591,7 @@ def bangun(rencana, tmp, pratinjau=None):
         if fmt == "tiktok":
             jy = seam - jh / 2
             if wm:  # geser ke sisi cam supaya tidak menumpuk watermark
-                jy = seam - jh - 6 if atas else seam + 6
+                jy = (seam - wh / 2 - jh - 8) if atas else (seam + wh / 2 + 8)
         else:
             jy = konten_y - jh - 40 if not wm else konten_y + konten_h + 40
         jy = even(min(max(jy, SAFE_ATAS), SAFE_BAWAH - jh))
@@ -589,7 +613,8 @@ def bangun(rencana, tmp, pratinjau=None):
 
     if wm:
         i = tambah("-loop", "1", "-framerate", str(FPS), "-t", f"{dur:.3f}", "-i", wm)
-        f.append(f"[{i}:v]format=rgba,scale={even(ww)}:{wh}[wm]")
+        op = float(rencana.get("watermark_opacity", 0.88))
+        f.append(f"[{i}:v]format=rgba,scale={even(ww)}:{wh},colorchannelmixer=aa={op:.2f}[wm]")
         f.append(f"[{cur}][wm]overlay=(W-w)/2:{wy}:eof_action=pass[bw]")
         cur = "bw"
 
@@ -604,7 +629,15 @@ def bangun(rencana, tmp, pratinjau=None):
             sfx = []
         skala = float(rencana.get("volume_sfx", 1.0))
         if info["audio"]:
-            f.append("[0:a]aresample=44100,asetpts=PTS-STARTPTS[a0]")
+            if len(simpan) > 1:
+                n = len(simpan)
+                f.append(f"[0:a]aresample=44100,asetpts=PTS-STARTPTS,asplit={n}" + "".join(f"[as{k}]" for k in range(n)))
+                for k, (a, b) in enumerate(simpan):  # fade 15 ms supaya sambungan tidak "klik"
+                    f.append(f"[as{k}]atrim=start={a:.3f}:end={b:.3f},asetpts=PTS-STARTPTS,"
+                             f"afade=t=in:d=0.015,afade=t=out:st={max(0, b - a - 0.015):.3f}:d=0.015[at{k}]")
+                f.append("".join(f"[at{k}]" for k in range(n)) + f"concat=n={n}:v=0:a=1[a0]")
+            else:
+                f.append("[0:a]aresample=44100,asetpts=PTS-STARTPTS[a0]")
         else:
             i = tambah("-f", "lavfi", "-t", f"{dur:.3f}", "-i", "anullsrc=r=44100:cl=stereo")
             f.append(f"[{i}:a]anull[a0]")
