@@ -1,0 +1,11 @@
+hasil-klip/
+.claude/skills/*/.venv/
+.claude/skills/*/sfx/bawaan/
+__pycache__/
+.claude/skills/*/sfx/*.wav
+.claude/skills/*/sfx/*.mp3
+.claude/skills/*/sfx/*.m4a
+.claude/skills/*/sfx/*.ogg
+.claude/skills/*/musik/*.wav
+.claude/skills/*/musik/*.mp3
+.claude/skills/*/musik/*.txt

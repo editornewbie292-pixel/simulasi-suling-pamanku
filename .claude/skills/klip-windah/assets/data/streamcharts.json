@@ -1,0 +1,23 @@
+{
+  "keterangan": "Data dari pengguna (screenshot Streams Charts). Pakai hanya angka di sini; jangan mengarang.",
+  "data": [
+    {
+      "judul": "Top GTA VI streamers by peak viewers",
+      "tanggal": "2026-11-18",
+      "sumber": "Streams Charts (screenshot dari pengguna)",
+      "gambar": "assets/data/streamcharts_top_gtavi_peak_2026-11-18.jpg",
+      "peringkat": [
+        {"no": 1, "streamer": "Windah Basudara", "platform": "YouTube", "peak_viewers": 392505},
+        {"no": 2, "streamer": "IShowSpeed", "platform": "YouTube", "peak_viewers": 371840},
+        {"no": 3, "streamer": "alanzoka", "platform": "Twitch", "peak_viewers": 361813},
+        {"no": 4, "streamer": "Rubius", "platform": "Twitch", "peak_viewers": 358695},
+        {"no": 5, "streamer": "PAULINHO O LOKO", "platform": "YouTube", "peak_viewers": 279301},
+        {"no": 6, "streamer": "rraenee", "platform": "Kick", "peak_viewers": 273899},
+        {"no": 7, "streamer": "TGG", "platform": "YouTube", "peak_viewers": 225106},
+        {"no": 8, "streamer": "Gameplayrj", "platform": "YouTube", "peak_viewers": 221591},
+        {"no": 9, "streamer": "MontanaBlack88", "platform": "Twitch", "peak_viewers": 173953},
+        {"no": 10, "streamer": "Typical Gamer", "platform": "YouTube", "peak_viewers": 149968}
+      ]
+    }
+  ]
+}
