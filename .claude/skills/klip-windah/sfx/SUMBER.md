@@ -16,8 +16,8 @@ Nama file -> fungsi (lihat `PERAN` di `scripts/sinkron_sfx.py`): nama persis fun
 | sfx/sting.wav | sting, orchestra-hit | pembuka kartu hook (menggantikan whoosh+boom) |
 | sfx/boom.wav | vine-boom, boom, impact | impact / punchline (efek `impact`) |
 | sfx/boom_sinematik.wav | cinematic-boom | impact dramatis (`sfx_tambahan`) |
-| sfx/whoosh.wav | whoosh, swoosh | keluar kartu hook, sebelum speed lines tebal |
-| sfx/glitch.wav, sfx/shutter.wav | glitch / shutter, camera | glitch/flash (tanpa glitch: pakai shutter) |
+| sfx/whoosh.wav | whoosh, swoosh | SEMUA transisi (potongan/glitch, keluar kartu hook), sebelum speed lines tebal |
+| sfx/glitch.wav, sfx/shutter.wav | glitch / shutter, camera | tidak dipakai untuk transisi (pengguna tidak suka); hanya bila diminta |
 | sfx/bruh.wav | bruh | momen gagal/kocak: `"sfx_tambahan": [["bruh", detik, 0.9]]` |
 | sfx/klik.wav, riser, scratch | click / riser / scratch | opsional |
 | musik/<nama>_loop.wav | musik, music, backsound, bgm, tiktok audio, lofi, phonk | backsound: `"musik": true` |
@@ -32,6 +32,6 @@ Selera pengguna: SFX dipilih pengguna sendiri; Claude tidak bisa mendengar, jadi
 persetujuan. Penempatan disetujui pengguna: orchestra hit = hook, vine boom = impact/punchline, bruh = momen
 gagal/kocak. Klip Bigfoot/pesawat/dugem pertama tetap versi lama atas permintaan pengguna.
 
-Status 20 Nov 2026: folder Drive berisi orchestra hit, vine boom, bruh, TikTok audio. Whoosh, cinematic boom,
-camera shutter, mouse click (dikirim langsung di chat) BELUM ada di Drive - minta pengguna menambahkannya; tanpa
-itu SFX bawaan sintetis yang dipakai.
+Status 20 Nov 2026: folder Drive BARU (link di env, bukan di repo) berisi file bernama fungsinya: sting, boom,
+bruh, klik, "simple whoosh", cinematic boom, dan backsound (TikTok audio). Shutter sengaja tidak dipakai lagi.
+Batas akhir bunyi -60 dB supaya ekor whoosh (0,52 dtk) tidak terpotong.

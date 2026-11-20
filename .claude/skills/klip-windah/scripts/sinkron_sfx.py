@@ -106,8 +106,9 @@ def olah_sfx(src, out, peran):
     lv = np.array([env[i:i + win].max() for i in range(a, len(env) - win, win)])
     b = len(env)
     sepi = 0
+    akhir_amb = 10 ** (-60 / 20)  # ekor pelan (mis. whoosh) jangan terpotong
     for k, v in enumerate(lv):
-        sepi = sepi + 1 if v < amb else 0
+        sepi = sepi + 1 if v < akhir_amb else 0
         if sepi >= 15 and k * 0.01 > 0.1:  # jeda 0,15 dtk = akhir bunyi pertama
             b = a + (k - 14) * win
             break

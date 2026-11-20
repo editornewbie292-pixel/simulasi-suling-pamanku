@@ -404,7 +404,10 @@ def buat_sfx():
     print("SFX bawaan dibuat di", SFX_BAWAAN)
 
 
-SFX_ALIAS = {"glitch": ["glitch", "shutter"]}  # tanpa glitch milik pengguna: pakai shutter-nya
+SFX_ALIAS = {"glitch": ["glitch", "shutter"]}
+# SFX untuk TRANSISI (potongan/glitch, keluar kartu hook). Pengguna tidak suka shutter/glitch di transisi -> whoosh.
+# Bisa diganti per klip: "sfx_transisi": "nama" (file di sfx/). Selalu tanyakan ke pengguna.
+SFX_TRANSISI = "whoosh"
 
 
 def sfx_path(nama):
@@ -581,7 +584,8 @@ def bangun(rencana, tmp, pratinjau=None):
             f.append(f"[{cur}]rgbashift=rh=-18:bh=18:gv=6:enable='{en}',"
                      f"noise=alls=55:allf=t:enable='{en}'[b2]")
             cur = "b2"
-            sfx += [("glitch", max(0, g - 0.12), 0.7) for g in glitch]
+            tr = rencana.get("sfx_transisi", SFX_TRANSISI)
+            sfx += [(tr, max(0, g - 0.2), 0.8) for g in glitch]
         # impact: getar + kilat putih
         impact = rencana.get("impact", [])
         if impact:
@@ -1151,9 +1155,9 @@ def buat_hook(rencana, tmp):
     fc = []
     lab = []
     if any((SFX_DIR / f"sting.{e}").exists() for e in ("wav", "mp3")):
-        sfx = [("sting", 0.0, 0.9), ("glitch", dur - 0.47, 0.6), ("whoosh", dur - 0.3, 0.7)]
+        sfx = [("sting", 0.0, 0.9), (rencana.get("sfx_transisi", SFX_TRANSISI), dur - 0.35, 0.8)]
     else:
-        sfx = [("whoosh", 0.0, 0.9), ("boom", 0.22, 0.8), ("glitch", dur - 0.47, 0.6), ("whoosh", dur - 0.3, 0.7)]
+        sfx = [("whoosh", 0.0, 0.9), ("boom", 0.22, 0.8), (rencana.get("sfx_transisi", SFX_TRANSISI), dur - 0.35, 0.8)]
     for k, (nama, t, vol) in enumerate(sfx):
         args += ["-i", sfx_path(nama)]
         ms = int(t * 1000)
