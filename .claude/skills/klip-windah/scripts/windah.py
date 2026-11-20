@@ -481,6 +481,9 @@ def bangun(rencana, tmp, pratinjau=None):
     butuh = 2 if fmt == "tiktok" else 1
     if penuh and cam:
         butuh += 1
+    zoom = rencana.get("zoom", [])  # [[mulai, selesai, x, y, w, h], ...] punch-in panel game ke area sumber
+    i_zoom0 = butuh
+    butuh += len(zoom)
     if pratinjau is None and len(simpan) > 1:
         n = len(simpan)
         f.append(f"[0:v]fps={FPS},setpts=PTS-STARTPTS,split={n}" + "".join(f"[vs{k}]" for k in range(n)))
@@ -552,6 +555,15 @@ def bangun(rencana, tmp, pratinjau=None):
         seam = konten_y
         nxt = 1
     cur = "base0"
+
+    for k, (za, zb, zx, zy, zw, zh) in enumerate(zoom):
+        if fmt == "tiktok":
+            pw, ph, py = W, gh, (ch if atas else 0)
+        else:
+            pw, ph, py = W, konten_h, konten_y
+        f.append(cover(f"s{i_zoom0 + k}", [zx, zy, zw, zh], pw, ph, f"zm{k}"))
+        f.append(f"[{cur}][zm{k}]overlay=0:{py}:enable='between(t,{za:.3f},{zb:.3f})'[bz{k}]")
+        cur = f"bz{k}"
 
     if penuh and cam:
         th = H if fmt == "tiktok" else konten_h
