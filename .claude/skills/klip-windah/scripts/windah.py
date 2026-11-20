@@ -26,6 +26,8 @@ FONT_TEKS = SKILL / "assets/fonts/Inter.ttf"
 SFX_DIR = SKILL / "sfx"
 SFX_BAWAAN = SFX_DIR / "bawaan"
 W, H, FPS = 1080, 1920, 30
+WATERMARK = SKILL / "assets/watermark/motionklip.png"
+SAFE_ATAS, SAFE_BAWAH = 150, H - 480  # batas aman UI TikTok/Reels/Shorts
 
 
 # ---------------------------------------------------------------- util
@@ -42,12 +44,17 @@ def run(cmd, quiet=False):
 
 def probe(path):
     out = run(["ffprobe", "-v", "error", "-show_entries",
-               "format=duration:stream=codec_type,width,height,r_frame_rate",
+               "format=duration:stream=codec_type,width,height,avg_frame_rate:stream_side_data=rotation",
                "-of", "json", path], quiet=True)
     j = json.loads(out)
     v = next(s for s in j["streams"] if s["codec_type"] == "video")
-    num, den = v["r_frame_rate"].split("/")
-    return {"w": int(v["width"]), "h": int(v["height"]),
+    num, den = v.get("avg_frame_rate", "30/1").split("/")
+    w, h = int(v["width"]), int(v["height"])
+    # rekaman layar ponsel sering menyimpan rotasi di metadata; ffmpeg & OpenCV memutarnya otomatis
+    rot = next((int(sd.get("rotation", 0)) for sd in v.get("side_data_list", []) if "rotation" in sd), 0)
+    if abs(rot) % 180 == 90:
+        w, h = h, w
+    return {"w": w, "h": h, "rotasi": rot,
             "fps": round(int(num) / max(1, int(den)), 2),
             "durasi": round(float(j["format"]["duration"]), 2),
             "audio": any(s["codec_type"] == "audio" for s in j["streams"])}
@@ -199,6 +206,108 @@ def analisis(video, outdir, transkrip=False):
 
 
 # ---------------------------------------------------------------- aset grafis
+EMOJI_FONT_CALON = [
+    SKILL / "assets/fonts/NotoColorEmoji.ttf",
+    Path("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"),
+    Path("/usr/share/fonts/noto/NotoColorEmoji.ttf"),
+    Path("C:/Windows/Fonts/seguiemj.ttf"),
+]
+_emoji_cache = {}
+
+
+def is_emoji(ch):
+    o = ord(ch)
+    return o >= 0x1F000 or 0x2600 <= o <= 0x27BF or o in (0x200D, 0xFE0F)
+
+
+def potong_emoji(teks):
+    """Pecah teks jadi [(segmen, adalah_emoji)]; rangkaian ZWJ/VS16 digabung ke emoji."""
+    seg = []
+    for ch in teks:
+        e = is_emoji(ch)
+        if seg and seg[-1][1] == e and (not e or ord(ch) in (0x200D, 0xFE0F) or (seg[-1][0] and ord(seg[-1][0][-1]) == 0x200D)):
+            seg[-1] = (seg[-1][0] + ch, e)
+        else:
+            seg.append((ch, e))
+    return seg
+
+
+def emoji_img(e, size):
+    key = (e, size)
+    if key in _emoji_cache:
+        return _emoji_cache[key]
+    im = None
+    for p in EMOJI_FONT_CALON:
+        if not p.exists():
+            continue
+        try:
+            ef = ImageFont.truetype(str(p), 109)  # Noto Color Emoji hanya punya ukuran 109
+        except OSError:
+            try:
+                ef = ImageFont.truetype(str(p), size)
+            except OSError:
+                continue
+        c = Image.new("RGBA", (160, 160), (0, 0, 0, 0))
+        ImageDraw.Draw(c).text((10, 10), e, font=ef, embedded_color=True)
+        bb = c.getbbox()
+        if bb:
+            im = c.crop(bb)
+            im = im.resize((int(size * im.width / im.height), size), Image.LANCZOS)
+            break
+    if im is None:
+        print(f"  (peringatan: font emoji tidak ditemukan, emoji {e!r} dilewati)")
+    _emoji_cache[key] = im
+    return im
+
+
+def ukur(teks, f, size):
+    w = 0
+    for seg, e in potong_emoji(teks):
+        if e:
+            im = emoji_img(seg, int(size * 0.82))
+            w += (im.width + int(size * 0.06)) if im else 0
+        else:
+            w += f.getlength(seg)
+    return w
+
+
+def tulis(img, xy, teks, f, size, fill="white", stroke=0, stroke_fill="black", warna_kata=None):
+    """Tulis satu baris (boleh berisi emoji). warna_kata: {KATA: warna} untuk menyorot kata tertentu."""
+    d = ImageDraw.Draw(img)
+    x, y = xy
+    for seg, e in potong_emoji(teks):
+        if e:
+            im = emoji_img(seg, int(size * 0.82))
+            if im:
+                img.alpha_composite(im, (int(x), int(y + size * 0.2)))
+                x += im.width + int(size * 0.06)
+            continue
+        for i, kata in enumerate(seg.split(" ")):
+            if i:
+                x += f.getlength(" ")
+            if not kata:
+                continue
+            warna = (warna_kata or {}).get(kata.strip(".,!?:").upper(), fill)
+            d.text((x, y), kata, font=f, fill=warna, stroke_width=stroke, stroke_fill=stroke_fill)
+            x += f.getlength(kata)
+
+
+def bungkus(teks, f, size, maxw):
+    kata, baris, cur = teks.split(), [], ""
+    for k in kata:
+        coba = (cur + " " + k).strip()
+        if ukur(coba, f, size) <= maxw or not cur:
+            cur = coba
+        else:
+            baris.append(cur)
+            cur = k
+    baris.append(cur)
+    # emoji sendirian di baris terakhir -> gabung ke baris sebelumnya
+    if len(baris) > 1 and all(e for _, e in potong_emoji(baris[-1].replace(" ", ""))):
+        baris[-2] += " " + baris.pop()
+    return baris
+
+
 def gambar_judul(teks, sub, path, lebar=W - 80):
     """Kotak judul gaya referensi: gelap transparan, tepi gradasi ungu->pink, huruf Anton kapital."""
     teks = teks.upper().strip()
@@ -207,15 +316,7 @@ def gambar_judul(teks, sub, path, lebar=W - 80):
     while True:
         f = font(FONT_JUDUL, size, bold=False)
         maxw = lebar - 2 * pad - 2 * border
-        kata, baris, cur = teks.split(), [], ""
-        for k in kata:
-            coba = (cur + " " + k).strip()
-            if f.getlength(coba) <= maxw:
-                cur = coba
-            else:
-                baris.append(cur)
-                cur = k
-        baris.append(cur)
+        baris = bungkus(teks, f, size, maxw)
         if len(baris) <= 3 or size <= 50:
             break
         size -= 4
@@ -223,7 +324,7 @@ def gambar_judul(teks, sub, path, lebar=W - 80):
     fs = font(FONT_TEKS, 22)
     sub_h = 30 if sub else 0
     tinggi = 2 * pad + lh * len(baris) + sub_h + 2 * border
-    lebar_isi = max(f.getlength(b) for b in baris)
+    lebar_isi = max(ukur(b, f, size) for b in baris)
     lebar = int(min(lebar, lebar_isi + 2 * pad + 2 * border + 10))
     img = Image.new("RGBA", (lebar, tinggi), (0, 0, 0, 0))
     # tepi gradasi
@@ -241,7 +342,7 @@ def gambar_judul(teks, sub, path, lebar=W - 80):
                         fill=(14, 10, 26, 235))
     y = border + pad - int(size * 0.08)
     for b in baris:
-        d.text((border + pad, y), b, font=f, fill="white")
+        tulis(img, (border + pad, y), b, f, size)
         y += lh
     if sub:
         d.text((border + pad, y + 2), sub.upper(), font=fs, fill=(235, 235, 235))
@@ -352,10 +453,18 @@ def bangun(rencana, tmp, pratinjau=None):
     butuh = 2 if fmt == "tiktok" else 1
     if penuh and cam:
         butuh += 1
+    f.append(f"[0:v]fps={FPS},setpts=PTS-STARTPTS{geser}[pre0]")
+    pre = "pre0"
+    # tutup: buramkan area sumber (notifikasi ponsel, UI) [x, y, w, h, mulai, selesai]
+    for k, (x, y, w, h, a, b) in enumerate(rencana.get("tutup", [])):
+        x, y, w, h = map(even, (x, y, w, h))
+        f.append(f"[{pre}]split[tm{k}][tc{k}];[tc{k}]crop={w}:{h}:{x}:{y},boxblur=24:3[tb{k}];"
+                 f"[tm{k}][tb{k}]overlay={x}:{y}:enable='between(t,{a:.3f},{b:.3f})'[pre{k + 1}]")
+        pre = f"pre{k + 1}"
     if butuh > 1:
-        f.append(f"[0:v]fps={FPS},setpts=PTS-STARTPTS{geser},split={butuh}" + "".join(f"[s{i}]" for i in range(butuh)))
+        f.append(f"[{pre}]split={butuh}" + "".join(f"[s{i}]" for i in range(butuh)))
     else:
-        f.append(f"[0:v]fps={FPS},setpts=PTS-STARTPTS{geser}[s0]")
+        f.append(f"[{pre}]null[s0]")
 
     if fmt == "tiktok":
         if not cam:
@@ -375,6 +484,7 @@ def bangun(rencana, tmp, pratinjau=None):
         konten_y, konten_h = 0, H
         nxt = 2
     else:  # kotak
+        atas = False
         sx, sy, sw, sh = stream
         rasio = rencana.get("rasio_kotak")  # lebar/tinggi; None = utuh
         if rasio and sw / sh > rasio:
@@ -433,14 +543,34 @@ def bangun(rencana, tmp, pratinjau=None):
             if jenis == "tebal":
                 sfx += [("whoosh", max(0, a - 0.35), 0.8) for a, _ in segs]
 
+    # watermark program clipper - selalu di safe zone TikTok/Shorts
+    # (tidak di 150 px teratas, tidak di 480 px terbawah tempat caption/username/tombol).
+    # TikTok: menempel di sambungan, di sisi panel game (momen penting game ada di tengah panel).
+    # Kotak: tepat di atas gambar, di latar hitam.
+    wm = rencana.get("watermark", str(WATERMARK) if WATERMARK.exists() else None)
+    if wm:
+        wim = Image.open(wm)
+        ww = int(rencana.get("watermark_lebar", W))
+        wh = even(wim.height * ww / wim.width)
+        if "watermark_y" in rencana:  # titik tengah watermark
+            wy = rencana["watermark_y"] - wh / 2
+        elif fmt == "tiktok":
+            wy = seam + 12 if atas else seam - wh - 12
+        else:
+            wy = konten_y - wh - 24
+        wy = even(min(max(wy, SAFE_ATAS), SAFE_BAWAH - wh))
+
     # judul (hook)
     if rencana.get("judul"):
         jd = float(rencana.get("judul_durasi", 2.5))
         jw, jh = gambar_judul(rencana["judul"], rencana.get("judul_sub"), tmp / "judul.png")
         if fmt == "tiktok":
-            jy = even(seam - jh / 2)
+            jy = seam - jh / 2
+            if wm:  # geser ke sisi cam supaya tidak menumpuk watermark
+                jy = seam - jh - 6 if atas else seam + 6
         else:
-            jy = even(max(40, konten_y - jh - 40))
+            jy = konten_y - jh - 40 if not wm else konten_y + konten_h + 40
+        jy = even(min(max(jy, SAFE_ATAS), SAFE_BAWAH - jh))
         jx = even(rencana.get("judul_x", 40))
         i = tambah("-loop", "1", "-framerate", str(FPS), "-t", f"{jd:.2f}", "-i", tmp / "judul.png")
         f.append(f"[{i}:v]format=rgba,fade=in:st=0:d=0.15:alpha=1,fade=out:st={max(0, jd - 0.3):.2f}:d=0.3:alpha=1[jud]")
@@ -456,6 +586,12 @@ def bangun(rencana, tmp, pratinjau=None):
         f.append(f"[{i}:v]format=rgba[cap]")
         f.append(f"[{cur}][cap]overlay=(W-w)/2:{cy}:eof_action=pass[bc]")
         cur = "bc"
+
+    if wm:
+        i = tambah("-loop", "1", "-framerate", str(FPS), "-t", f"{dur:.3f}", "-i", wm)
+        f.append(f"[{i}:v]format=rgba,scale={even(ww)}:{wh}[wm]")
+        f.append(f"[{cur}][wm]overlay=(W-w)/2:{wy}:eof_action=pass[bw]")
+        cur = "bw"
 
     f.append(f"[{cur}]format=yuv420p[vout]")
 
@@ -535,6 +671,81 @@ def render(rencana_path, pratinjau=False):
     print(f"Selesai: {out} ({dur:.1f} detik + endcard)" if rencana.get("endcard") else f"Selesai: {out} ({dur:.1f} detik)")
 
 
+def thumbnail(rencana_path):
+    """Cover 9:16: frame game (mis. WASTED) + wajah Windah besar + teks besar ber-outline."""
+    from PIL import ImageEnhance
+    r = json.loads(Path(rencana_path).read_text(encoding="utf-8"))
+    th = r["thumbnail"]
+    src = r["input"]
+    t0 = (r.get("potong") or [0, 0])[0]
+    stream = r.get("stream_box")
+    cam = r["cam_box"]
+    out = Path(th.get("output") or Path(rencana_path).with_name(Path(rencana_path).stem + "_thumbnail.jpg"))
+
+    def frame(t):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "f.png"
+            run(["ffmpeg", "-v", "error", "-y", "-ss", f"{t0 + t:.3f}", "-i", src, "-frames:v", "1", p], quiet=True)
+            return Image.open(p).convert("RGB")
+
+    def cover_img(im, box, tw, th_, fokus_x=0.5, fokus_y=0.5, zoom=1.0):
+        x, y, w, h = box
+        cw = min(w, h * tw / th_) / zoom
+        chh = cw * th_ / tw
+        cx = x + (w - cw) * fokus_x
+        cy = y + (h - chh) * fokus_y
+        return im.crop((int(cx), int(cy), int(cx + cw), int(cy + chh))).resize((tw, th_), Image.LANCZOS)
+
+    fg = frame(th.get("detik_game", 0))
+    fc = frame(th.get("detik_cam", th.get("detik_game", 0)))
+    if not stream:
+        stream = [0, 0, fg.width, fg.height]
+    gh = even(H * th.get("porsi_game", 0.58))
+    ch = H - gh
+    game = cover_img(fg, stream, W, gh, th.get("fokus_game_x", 0.5), th.get("fokus_game_y", 0.5),
+                     th.get("zoom_game", 1.0))
+    wajah = cover_img(fc, cam, W, ch, 0.5, th.get("fokus_cam_y", 0.4), th.get("zoom_cam", 1.0))
+    game = ImageEnhance.Contrast(ImageEnhance.Color(game).enhance(1.25)).enhance(1.1)
+    wajah = ImageEnhance.Contrast(ImageEnhance.Color(wajah).enhance(1.15)).enhance(1.08)
+    kanvas = Image.new("RGBA", (W, H), "black")
+    cam_atas = th.get("posisi_cam", "bawah") == "atas"
+    kanvas.paste(wajah, (0, 0) if cam_atas else (0, gh))
+    kanvas.paste(game, (0, ch) if cam_atas else (0, 0))
+
+    # gelapkan area teks supaya terbaca
+    teks_atas = th.get("posisi_teks", "atas") == "atas"
+    grad = Image.new("RGBA", (W, 620), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(grad)
+    for yy in range(620):
+        a = int(190 * (1 - yy / 620) ** 1.6)
+        gd.line([(0, yy), (W, yy)], fill=(0, 0, 0, a))
+    if teks_atas:
+        kanvas.alpha_composite(grad, (0, 0))
+    else:
+        kanvas.alpha_composite(grad.transpose(Image.FLIP_TOP_BOTTOM), (0, H - 620))
+
+    teks = th["teks"].upper()
+    sorot = {k.upper(): (255, 214, 0) for k in th.get("sorot", [])}
+    size = int(th.get("ukuran_teks", 170))
+    while True:
+        f = font(FONT_JUDUL, size, bold=False)
+        baris = bungkus(teks, f, size, W - 100)
+        if len(baris) <= 3 and max(ukur(b, f, size) for b in baris) <= W - 100 or size <= 80:
+            break
+        size -= 6
+    lh = int(size * 1.05)
+    total = lh * len(baris)
+    y = 80 if teks_atas else H - total - 110
+    for b in baris:
+        x = (W - ukur(b, f, size)) / 2
+        tulis(kanvas, (x, y), b, f, size, fill="white", stroke=max(6, size // 14), stroke_fill="black",
+              warna_kata=sorot)
+        y += lh
+    out.parent.mkdir(parents=True, exist_ok=True)
+    kanvas.convert("RGB").save(out, quality=95)
+    print("Thumbnail:", out)
+
+
 def main():
     ap = argparse.ArgumentParser(prog="klip-windah")
     sp = ap.add_subparsers(dest="cmd", required=True)
@@ -547,7 +758,11 @@ def main():
     r = sp.add_parser("render")
     r.add_argument("rencana")
     sp.add_parser("sfx")
+    t = sp.add_parser("thumbnail")
+    t.add_argument("rencana")
     args = ap.parse_args()
+    if args.cmd == "thumbnail":
+        return thumbnail(args.rencana)
     if args.cmd == "analisis":
         out = args.keluar or str(Path(args.video).with_suffix("")) + "_analisis"
         analisis(args.video, out, args.transkrip)

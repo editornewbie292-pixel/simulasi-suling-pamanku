@@ -11,6 +11,7 @@ Rekaman layar masuk, editan siap posting keluar. `SKILL` = folder file ini. Peri
 bash SKILL/scripts/klip-windah analisis VIDEO --transkrip   # info, lembar frame bergrid, usulan cam, puncak suara, transkrip
 bash SKILL/scripts/klip-windah pratinjau RENCANA.json       # gambar diam beberapa detik: cek crop SEBELUM render
 bash SKILL/scripts/klip-windah render RENCANA.json          # MP4 1080x1920, 30 fps, -14 LUFS
+bash SKILL/scripts/klip-windah thumbnail RENCANA.json       # cover 9:16 (bagian "thumbnail" di rencana)
 bash SKILL/scripts/klip-windah sfx                          # buat ulang SFX bawaan
 ```
 Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkrip memakai Whisper `small`
@@ -25,7 +26,11 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
      cropdetect hanya membuang bar hitam;
    - kotak cam Windah (`cam_box`): mulai dari `cam_usulan[0].usulan_cam_box`, betulkan dengan melihat lembar.
      Bila cam berpindah atau stream ganti ke cam layar penuh di tengah video, catat detiknya;
-   - momen: puncak suara (`puncak_suara`) + transkrip = teriakan, tawa, punchline.
+   - momen: puncak suara (`puncak_suara`) + transkrip = teriakan, tawa, punchline. Untuk detik efek yang pas
+     (ledakan, layar WASTED), cari lonjakan warna/beda frame dengan OpenCV, jangan menebak dari lembar.
+   - **gangguan rekaman**: notifikasi ponsel, pop-up aplikasi, kursor. Tutup dengan `tutup` (diburamkan).
+   - **akhir rekaman**: buang layar hitam/kosong di ujung; akhiri tepat sebelum gambar game hilang.
+   - Rekaman layar ponsel sering menyimpan rotasi di metadata: `info.w/h` sudah ukuran tampil; pakai itu.
 3. **Tanya pengguna** (AskUserQuestion, maksimal 4 pertanyaan, sertakan apa yang kamu lihat). Yang biasanya perlu:
    - **Format**: TikTok 9:16, kotak, atau keduanya.
    - **Posisi cam** (TikTok): di atas atau di bawah. Pengguna bilang posisinya bervariasi - selalu tanya.
@@ -35,7 +40,11 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
 4. **Tulis rencana** `hasil-klip/<nama>/<format>.json` (skema di bawah), jalankan `pratinjau`, **lihat** gambarnya:
    wajah utuh di panel cam, gameplay tidak terpotong aneh, judul tidak menutupi wajah. Betulkan lalu ulangi.
 5. **Render**, lalu cek beberapa frame hasil (ffmpeg `-ss T -frames:v 1`) terutama di titik efek.
-6. **Kirim** MP4 ke pengguna dengan SendUserFile, plus ringkasan: durasi, efek di detik berapa, saran judul
+6. **Thumbnail** bila diminta: isi bagian `thumbnail` di rencana, jalankan `thumbnail`, lihat hasilnya
+   (teks tidak menabrak tulisan penting game, wajah + tangan/ekspresi utuh). Gaya bawaan: frame game paling
+   dramatis (mis. WASTED) di atas, wajah Windah besar di bawah, teks Anton besar putih ber-outline hitam di atas
+   dengan kata kunci kuning (`sorot`), emoji boleh.
+7. **Kirim** MP4 ke pengguna dengan SendUserFile, plus ringkasan: durasi, efek di detik berapa, saran judul
    postingan + hashtag. Tawarkan revisi (posisi, judul, efek). **Jangan pernah memposting untuk pengguna.**
 
 ## Gaya (dari video referensi pengguna)
@@ -70,8 +79,15 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
   dari pengguna, jangan buat end card yang meniru branding program/merek mana pun.
 
 ### Umum
+- **Watermark motion klip selalu dipasang** (`assets/watermark/motionklip.png`, banner lebar penuh) di **safe zone**
+  TikTok/Reels/Shorts: tidak di 150 px teratas dan tidak di 480 px terbawah (area caption, username, tombol).
+  - TikTok: menempel di sambungan, di sisi panel game, supaya tidak menutupi wajah maupun momen di tengah game.
+    Kotak judul otomatis digeser ke sisi cam agar tidak menumpuk.
+  - Kotak: tepat di atas gambar, di latar hitam (judul, bila ada, pindah ke bawah gambar).
+  - `"watermark_y"` (titik tengah) untuk memindah, `"watermark": null` untuk mematikan.
+- **Emoji** di judul/teks didukung (font Noto Color Emoji sistem; di Windows Segoe UI Emoji).
 - **Tanpa voice-over, murni momen.** Suara stream asli dipertahankan, dinormalisasi ke -14 LUFS.
-- Watermark/sponsor dari referensi (Dunia Games, motion klip) **tidak** ditiru.
+- Watermark sponsor lain dari referensi (mis. Dunia Games) **tidak** ditiru.
 - SFX bawaan dibuat sintetis (`sfx/bawaan/`). Bila pengguna mengirim SFX sendiri, simpan sebagai
   `sfx/whoosh.wav`, `sfx/boom.wav`, `sfx/glitch.wav`, `sfx/riser.wav`, `sfx/klik.wav` (mp3/m4a/ogg juga bisa) -
   otomatis dipakai menggantikan bawaan. SFX bebas: `"sfx_tambahan": [["riser", 12.0, 0.8]]` (nama, detik, volume).
@@ -96,9 +112,19 @@ Semua kotak dalam **piksel video sumber** `[x, y, lebar, tinggi]`; semua detik *
   "speedlines": [[27.5, 38.5, "tipis"], [39.5, 41.5, "tebal"]],
   "impact": [39.8],
   "cam_penuh": [],
-  "pratinjau_detik": [1, 30, 40]
+  "tutup": [[820, 70, 640, 110, 19.5, 23.5]],
+  "pratinjau_detik": [1, 30, 40],
+  "thumbnail": {
+    "output": "hasil-klip/ikan/thumbnail.jpg",
+    "detik_game": 40.0, "detik_cam": 41.0,
+    "teks": "Perfect landing kali 😂", "sorot": ["KALI"],
+    "posisi_cam": "bawah", "posisi_teks": "atas",
+    "ukuran_teks": 128, "porsi_game": 0.62, "fokus_cam_y": 0.8
+  }
 }
 ```
+`tutup`: `[x, y, w, h, mulai, selesai]` area sumber yang diburamkan. Thumbnail: `fokus_cam_y` 0-1 menggeser wajah
+(besar = wajah naik), `fokus_game_x/y`, `zoom_game`, `zoom_cam`.
 Kotak: `"format": "kotak"`, `"rasio_kotak": 1.25`, `"caption": "salip aelah.."`, `"cam_penuh": [[9.0, 11.5]]`,
 opsional `"endcard": "path/endcard.mp4"`. `game_box` kosong = tengah `stream_box` dengan rasio panel.
 
