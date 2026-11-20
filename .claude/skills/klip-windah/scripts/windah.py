@@ -27,6 +27,7 @@ SFX_DIR = SKILL / "sfx"
 SFX_BAWAAN = SFX_DIR / "bawaan"
 W, H, FPS = 1080, 1920, 30
 WATERMARK = SKILL / "assets/watermark/motionklip.png"
+ENDCARD_DIR = SKILL / "assets/endcard"  # template 3 detik dari program clipper
 SAFE_ATAS, SAFE_BAWAH = 150, H - 480  # batas aman UI TikTok/Reels/Shorts
 
 
@@ -681,6 +682,13 @@ def render(rencana_path, pratinjau=False):
             print("Pratinjau:", pp, "detik", titik)
             return
         inputs, f, amap, dur = bangun(rencana, tmp)
+        # endcard template program WAJIB di akhir setiap video, utuh tanpa efek/filter
+        if "endcard" not in rencana:
+            calon = sorted(ENDCARD_DIR.glob("*.mp4")) if ENDCARD_DIR.exists() else []
+            rencana["endcard"] = str(calon[0]) if calon else None
+        if not rencana.get("endcard"):
+            print("  PERINGATAN: belum ada endcard template 3 detik (assets/endcard/). Video ini BELUM memenuhi "
+                  "aturan program - jangan diposting sebelum endcard dipasang.")
         utama = tmp / "utama.mp4" if rencana.get("endcard") else out
         run(["ffmpeg", "-v", "error", "-y", *inputs, "-filter_complex", ";".join(f),
              "-map", "[vout]", *amap, "-r", FPS, "-c:v", "libx264", "-preset", "medium", "-crf", "19",

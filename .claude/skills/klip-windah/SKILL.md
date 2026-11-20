@@ -17,6 +17,17 @@ bash SKILL/scripts/klip-windah sfx                          # buat ulang SFX baw
 Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkrip memakai Whisper `small`
 (sekitar 480 MB, diunduh dari huggingface.co saat pertama dipakai).
 
+## Aturan program clipper (WAJIB, cek setiap video)
+1. **Harus ada gameplay GTA VI + Windah** di klipnya (momen meme, epic, dll. bebas). Video tanpa gameplay
+   (mis. hanya avatar/cam bicara) tidak memenuhi syarat - format cerita pun wajib memuat potongan gameplay.
+2. **Endcard template 3 detik wajib di akhir setiap video**, utuh: durasi lengkap, pesan jelas, **tanpa efek/filter**
+   (tanpa watermark, teks, SFX, atau loudnorm di atasnya). File template disimpan di `assets/endcard/` dan
+   otomatis disambung oleh `render`. Bila belum ada, render memberi PERINGATAN: beri tahu pengguna bahwa video
+   belum boleh diposting.
+3. **Watermark resmi motion klip wajib** (`assets/watermark/motionklip.png`) di bagian klip (bukan di endcard).
+4. Opsional: "goreng" jumlah views / peak viewers Windah (sumber: streamcharts) sebagai meme atau jedag-jedug.
+   Angka harus dari sumber yang dikirim pengguna (screenshot/link) - jangan mengarang angka.
+
 ## Alur kerja (ikuti urutannya)
 1. **Pengguna mengirim rekaman.** Upload ada di `~/.claude/uploads/...`. Salin ke folder kerja
    `hasil-klip/<nama-singkat>/` di repo ini (folder itu di-gitignore), jangan ubah file aslinya.
@@ -79,8 +90,8 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
   "..", contoh referensi "salip aelah..". Putih kecil berbayang di tengah gambar (`caption_y` 0-1).
 - **Punch-in**: `cam_penuh` ke wajah saat tertawa/bereaksi, 1-3 detik. Boleh `impact` kecil di awal punch-in.
 - Pendek: sekitar 10-20 detik, satu lelucon.
-- `endcard`: video penutup (mis. end card resmi program clipper dari pengguna) disambung di akhir. Tanpa file
-  dari pengguna, jangan buat end card yang meniru branding program/merek mana pun.
+- `endcard`: bawaannya file pertama di `assets/endcard/` (wajib, lihat Aturan program). `"endcard": "path"` untuk
+  file lain. Jangan pernah membuat sendiri end card yang meniru branding program/merek mana pun.
 
 ### Umum
 - **Watermark motion klip selalu dipasang** (`assets/watermark/motionklip.png`, banner lebar penuh) di **safe zone**
