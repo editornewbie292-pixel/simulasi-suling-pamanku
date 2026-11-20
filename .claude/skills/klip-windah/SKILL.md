@@ -36,6 +36,11 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
   4,8 MB dari huggingface.co, dicampur 75% AI + 25% Lanczos = `cam_hd_campur`) di timeline hasil; lalu
   `"cam_hd": true` di rencana. Lambat (~1 dtk/frame; 45 dtk klip = ~22 menit): jalankan di background SETELAH
   `potong`/`buang`/`cam_box` final (berubah = buat ulang). Pengguna menyetujui hasilnya untuk klip Bigfoot.
+- **Cari SFX CC0**: `python3 -I SKILL/scripts/cari_sfx.py hasil-klip/pilihan_sfx.html kata1 "kata 2" ...`
+  (API Openverse tanpa login, maks 20 hasil per kueri) membuat halaman berpemutar audio untuk DIDENGAR PENGGUNA;
+  kirim dengan SendUserFile. Unduhan langsung Freesound diblokir dari container (403), Pixabay diblokir
+  Cloudflare - pengguna yang mengunduh pilihannya. Self-host Openverse tidak membantu (indeks saja, filenya tetap
+  di Freesound).
 - **SFX**: pakai file pilihan pengguna di `sfx/` (lihat `sfx/SUMBER.md`). Pengguna menilai selera SFX Claude
   jelek - jangan memilih/mengunduh SFX sendiri; minta pengguna yang memilih.
 - **Kualitas sumber menentukan HD-nya hasil.** Rekaman layar HP (mis. 1608x720) hanya memuat stream 720p dan cam
