@@ -684,7 +684,7 @@ def render(rencana_path, pratinjau=False):
         inputs, f, amap, dur = bangun(rencana, tmp)
         # endcard template program WAJIB di akhir setiap video, utuh tanpa efek/filter
         if "endcard" not in rencana:
-            calon = sorted(ENDCARD_DIR.glob("*.mp4")) if ENDCARD_DIR.exists() else []
+            calon = sorted(p for p in ENDCARD_DIR.glob("*") if p.suffix.lower() in (".mp4", ".mov")) if ENDCARD_DIR.exists() else []
             rencana["endcard"] = str(calon[0]) if calon else None
         if not rencana.get("endcard"):
             print("  PERINGATAN: belum ada endcard template 3 detik (assets/endcard/). Video ini BELUM memenuhi "

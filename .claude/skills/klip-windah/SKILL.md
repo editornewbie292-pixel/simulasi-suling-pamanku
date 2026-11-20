@@ -26,7 +26,10 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
    belum boleh diposting.
 3. **Watermark resmi motion klip wajib** (`assets/watermark/motionklip.png`) di bagian klip (bukan di endcard).
 4. Opsional: "goreng" jumlah views / peak viewers Windah (sumber: streamcharts) sebagai meme atau jedag-jedug.
-   Angka harus dari sumber yang dikirim pengguna (screenshot/link) - jangan mengarang angka.
+   Angka harus dari sumber yang dikirim pengguna (screenshot/link) - jangan mengarang angka. Data yang sudah
+   dikirim ada di `assets/data/streamcharts.json` (+ screenshot aslinya); tambahkan entri baru bila pengguna
+   mengirim data baru, selalu dengan tanggal. Contoh: 18 Nov 2026 Windah **#1 dunia** peak viewers GTA VI
+   (392.505), di atas IShowSpeed (371.840). Selalu sebut tanggal datanya bila dipakai di video.
 
 ## Alur kerja (ikuti urutannya)
 1. **Pengguna mengirim rekaman.** Upload ada di `~/.claude/uploads/...`. Salin ke folder kerja
