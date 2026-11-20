@@ -417,9 +417,15 @@ def sfx_path(nama):
 
 # ---------------------------------------------------------------- render
 def cover(label_in, box, tw, th, label_out):
+    """Crop lalu perbesar (Lanczos) + penajaman sesuai faktor perbesaran (cam kecil diperbesar ~4x)."""
     x, y, w, h = map(int, box)
+    faktor = max(tw / max(1, w), th / max(1, h))
+    tajam = ""
+    if faktor > 1.2:
+        kuat = min(1.3, 0.35 + 0.25 * faktor)
+        tajam = f",unsharp=5:5:{kuat:.2f}:5:5:0.0"
     return (f"[{label_in}]crop={even(w)}:{even(h)}:{x}:{y},"
-            f"scale={tw}:{th}:force_original_aspect_ratio=increase,crop={tw}:{th}[{label_out}]")
+            f"scale={tw}:{th}:force_original_aspect_ratio=increase:flags=lanczos,crop={tw}:{th}{tajam}[{label_out}]")
 
 
 def antara(segs):
@@ -730,7 +736,7 @@ def render(rencana_path, pratinjau=False):
             bagian.append(buat_hook(rencana, tmp))
         utama = tmp / "utama.mp4"
         run(["ffmpeg", "-v", "error", "-y", *inputs, "-filter_complex", ";".join(f),
-             "-map", "[vout]", *amap, "-r", FPS, "-c:v", "libx264", "-preset", "medium", "-crf", "19",
+             "-map", "[vout]", *amap, "-r", FPS, "-c:v", "libx264", "-preset", "medium", "-crf", "17",
              "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-movflags", "+faststart", utama])
         bagian.append(utama)
         if rencana.get("endcard"):
@@ -765,7 +771,7 @@ def sambung(bagian, out, tmp):
         lab += f"[v{i}][a{i}]"
     fc.append(f"{lab}concat=n={len(bagian)}:v=1:a=1[v][a]")
     run(["ffmpeg", "-v", "error", "-y", *args, "-filter_complex", ";".join(fc),
-         "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", "19",
+         "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", "17",
          "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out])
 
 
@@ -1020,7 +1026,7 @@ def buat_hook(rencana, tmp):
     fc.append("".join(lab) + f"amix=inputs={len(lab)}:normalize=0:duration=longest,atrim=0:{dur:.3f},"
               f"apad=whole_dur={dur:.3f},loudnorm=I=-14:TP=-1.5:LRA=11,aresample=44100[a]")
     run(["ffmpeg", "-v", "error", "-y", *args, "-filter_complex", ";".join(fc), "-map", "0:v", "-map", "[a]",
-         "-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-pix_fmt", "yuv420p",
+         "-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", "medium", "-crf", "17", "-pix_fmt", "yuv420p",
          "-c:a", "aac", "-b:a", "192k", "-ar", "44100", out])
     print(f"  kartu hook: {dur:.1f} dtk")
     return out

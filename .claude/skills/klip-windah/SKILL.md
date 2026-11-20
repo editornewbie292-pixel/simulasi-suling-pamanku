@@ -32,6 +32,10 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
    (392.505), di atas IShowSpeed (371.840). Selalu sebut tanggal datanya bila dipakai di video.
 
 ## Alur kerja (ikuti urutannya)
+- **Kualitas sumber menentukan HD-nya hasil.** Rekaman layar HP (mis. 1608x720) hanya memuat stream 720p dan cam
+  ~270 px yang harus diperbesar ~4x. Render memakai Lanczos + penajaman otomatis, tapi tidak bisa menambah detail.
+  Sarankan pengguna merekam dari PC/laptop layar 1080p+ (OBS / Xbox Game Bar Win+G), YouTube 1080p60 layar penuh,
+  bitrate tinggi; di HP: layar penuh landscape, kualitas perekam tertinggi.
 - **File besar (>30 MB) lewat Google Drive**: pengguna mengirim link folder/file Drive. Daftar file:
   `uvx gdown --folder URL` (cukup untuk membaca ID + nama; unduhan gdown sendiri gagal karena dialihkan ke host
   `doc-*.googleusercontent.com` yang berganti-ganti).
