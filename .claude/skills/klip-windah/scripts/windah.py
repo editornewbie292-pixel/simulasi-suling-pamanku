@@ -802,8 +802,15 @@ def render(rencana_path, pratinjau=False):
 def pasang_musik(inp, out, mus):
     """Musik latar di bawah suara (kartu hook + klip; endcard tidak disentuh). Ducking otomatis:
     musik turun saat ada suara Windah/game, naik lagi saat sepi."""
+    if mus is True:
+        mus = {}
     if isinstance(mus, str):
         mus = {"file": mus}
+    if not mus.get("file"):  # "musik": true -> backsound hasil sinkron-sfx (yang terbaru)
+        calon = sorted((SKILL / "musik").glob("*_loop.wav"), key=lambda p: p.stat().st_mtime)
+        if not calon:
+            raise SystemExit("Belum ada backsound: jalankan `klip-windah sinkron-sfx` dulu.")
+        mus = {**mus, "file": str(calon[-1])}
     f = Path(mus["file"])
     if not f.is_absolute() and not f.exists():
         f = SKILL / f

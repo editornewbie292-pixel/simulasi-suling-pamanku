@@ -6,4 +6,7 @@ if ! command -v uv >/dev/null 2>&1; then
   exit 1
 fi
 export PYTHONUTF8=1
+if [ "$1" = "sinkron-sfx" ]; then
+  exec uv run --quiet --project "$HERE" python -I "$HERE/scripts/sinkron_sfx.py" "$@"
+fi
 exec uv run --quiet --project "$HERE" python -I "$HERE/scripts/windah.py" "$@"

@@ -9,3 +9,5 @@ __pycache__/
 .claude/skills/*/musik/*.wav
 .claude/skills/*/musik/*.mp3
 .claude/skills/*/musik/*.txt
+.claude/skills/*/sfx/drive.local.txt
+.claude/skills/*/sfx/.sinkron.json

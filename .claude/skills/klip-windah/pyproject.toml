@@ -10,6 +10,7 @@ dependencies = [
   "faster-whisper>=1.1.0",
   "rembg>=2.0.60",
   "onnxruntime>=1.18",
+  "gdown>=5.2",
 ]
 
 [tool.uv]
