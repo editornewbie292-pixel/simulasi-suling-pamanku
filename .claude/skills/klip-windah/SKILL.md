@@ -32,6 +32,8 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
    (392.505), di atas IShowSpeed (371.840). Selalu sebut tanggal datanya bila dipakai di video.
 
 ## Alur kerja (ikuti urutannya)
+0. **Mencari bahan**: pengguna memakai AI pencari momen miliknya (berbasis transkrip YouTube). Prompt dan
+   cara membaca hasil JSON-nya ada di `prompt/pencari-momen.md`. Claude tidak bisa mengunduh dari YouTube.
 1. **Pengguna mengirim rekaman.** Upload ada di `~/.claude/uploads/...`. Salin ke folder kerja
    `hasil-klip/<nama-singkat>/` di repo ini (folder itu di-gitignore), jangan ubah file aslinya.
 2. **Analisis**: `analisis VIDEO --transkrip`. Lalu **lihat** `lembar.jpg` (Read): grid kuning menandai
