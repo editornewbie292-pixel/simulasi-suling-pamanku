@@ -791,18 +791,32 @@ def buat_caption_frasa(rencana, cpath, maks_kata=4):
     t0, dsrc, simpan = segmen_simpan(rencana)
     raw = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{t0:.3f}", "-t", f"{dsrc:.3f}", "-i", rencana["input"],
                           "-ac", "1", "-ar", "16000", "-f", "f32le", "-"], capture_output=True).stdout
-    a = np.frombuffer(raw, dtype=np.float32)
-    a = np.concatenate([a[int(x * 16000):int(y * 16000)] for x, y in simpan]).copy()
+    # transkrip audio UTUH (menggabung potongan membuat Whisper bingung), lalu petakan waktu kata
+    # ke timeline hasil; kata di bagian yang dibuang ikut dibuang
+    a = np.frombuffer(raw, dtype=np.float32).copy()
+
+    def ke_hasil(t):
+        pos = 0.0
+        for x, y in simpan:
+            if x <= t <= y:
+                return pos + t - x
+            pos += y - x
+        return None
+
     m = WhisperModel(rencana.get("model_caption", "small"), device="cpu", compute_type="int8")
     # tanpa initial_prompt & tanpa konteks sebelumnya: mencegah halusinasi kata berulang
+    # VAD peka (suara Windah sering pelan di bawah suara game)
     segs, _ = m.transcribe(a, language="id", word_timestamps=True, vad_filter=True,
-                           condition_on_previous_text=False)
+                           vad_parameters=dict(threshold=0.25, min_silence_duration_ms=300),
+                           condition_on_previous_text=False, no_speech_threshold=0.9)
     frasa, cur = [], []
     for s_ in segs:
         for w in s_.words:
             kata = w.word.strip()
-            if not kata:
+            ws, we = ke_hasil(w.start), ke_hasil(w.end)
+            if not kata or ws is None:
                 continue
+            w = type("K", (), {"start": ws, "end": we if we is not None else ws + 0.3})
             if cur and (len(cur) >= maks_kata or w.start - cur[-1][1] > 0.45):
                 frasa.append(cur)
                 cur = []
@@ -885,7 +899,7 @@ def buat_hook(rencana, tmp):
     sx, sy, sw, sh = stream or [0, 0, fg.width, fg.height]
     cw = min(sw, sh * W / H)
     lat = fg.crop((int(sx + (sw - cw) / 2), sy, int(sx + (sw + cw) / 2), sy + sh)).resize((W, H), Image.LANCZOS)
-    lat = ImageEnhance.Brightness(lat.filter(ImageFilter.GaussianBlur(18))).enhance(0.75).convert("RGBA")
+    lat = ImageEnhance.Brightness(lat.filter(ImageFilter.GaussianBlur(float(hk.get("blur_latar", 18))))).enhance(0.75).convert("RGBA")
     grad = Image.new("RGBA", (W, 900), (0, 0, 0, 0))
     gd = ImageDraw.Draw(grad)
     for yy in range(900):

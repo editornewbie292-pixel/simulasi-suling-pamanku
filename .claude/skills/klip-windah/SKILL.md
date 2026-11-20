@@ -32,6 +32,12 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
    (392.505), di atas IShowSpeed (371.840). Selalu sebut tanggal datanya bila dipakai di video.
 
 ## Alur kerja (ikuti urutannya)
+- **File besar (>30 MB) lewat Google Drive**: pengguna mengirim link folder/file Drive. Daftar file:
+  `uvx gdown --folder URL` (cukup untuk membaca ID + nama; unduhan gdown sendiri gagal karena dialihkan ke host
+  `doc-*.googleusercontent.com` yang berganti-ganti).
+  Simpan unduhan di `hasil-klip/<nama>/` (di-gitignore). Unduh tiap file dengan
+  `curl -L -o NAMA "https://drive.usercontent.google.com/download?id=ID&export=download&confirm=t"`.
+  Host drive.google.com, drive.usercontent.google.com, docs.google.com sudah diizinkan di environment.
 0. **Mencari bahan**: pengguna memakai AI pencari momen miliknya (berbasis transkrip YouTube). Prompt dan
    cara membaca hasil JSON-nya ada di `prompt/pencari-momen.md`. Claude tidak bisa mengunduh dari YouTube.
 1. **Pengguna mengirim rekaman.** Upload ada di `~/.claude/uploads/...`. Salin ke folder kerja
@@ -103,6 +109,9 @@ pertama, kalimat hook bercerita kontras, caption di setiap ucapan, transisi flas
   (TikTok) / tepi bawah gambar (kotak). **Selalu baca dan koreksi file caption itu sebelum render final**:
   Whisper sering salah dengar bahasa gaul dan bisa berhalusinasi kata berulang. Bagian yang tidak jelas: hapus,
   jangan menebak. Format: `[[mulai, selesai, "TEKS"], ...]` dalam detik timeline hasil.
+  Bila hasil otomatis tipis/aneh, transkrip ulang sumber dengan dan tanpa VAD lalu bandingkan (kalimat yang
+  muncul di kedua versi = paling bisa dipercaya). `language="id"` membuat dialog NPC berbahasa Inggris ikut
+  "diterjemahkan" ngawur - jangan jadikan caption, kecuali ucapan Windah sendiri ("What? Bigfoot?").
 - Pola hook: ekspektasi vs realita (NGAKU ___ / ENDINGNYA ___), rekor/pertama, angka (streamcharts), rahasia,
   pertanyaan, reaksi, satu-satunya, peringatan, kegagalan lucu ("13 TAHUN NUNGGU / 5 MENIT LANGSUNG ___"),
   perbandingan. Tawarkan 2-3 pilihan ke pengguna.
