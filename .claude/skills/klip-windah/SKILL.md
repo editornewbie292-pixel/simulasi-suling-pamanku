@@ -41,6 +41,8 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
   kirim dengan SendUserFile. Unduhan langsung Freesound diblokir dari container (403), Pixabay diblokir
   Cloudflare - pengguna yang mengunduh pilihannya. Self-host Openverse tidak membantu (indeks saja, filenya tetap
   di Freesound).
+- **Musik latar**: `"musik": {"file": "musik/latar_tiktok1_loop.wav", "volume_db": -15}` (lihat
+  `musik/SUMBER.md`): di bawah kartu hook + klip, ducking otomatis, endcard tidak disentuh. Pakai untuk klip baru.
 - **SFX**: pakai file pilihan pengguna di `sfx/` (lihat `sfx/SUMBER.md`). Pengguna menilai selera SFX Claude
   jelek - jangan memilih/mengunduh SFX sendiri; minta pengguna yang memilih.
 - **Kualitas sumber menentukan HD-nya hasil.** Rekaman layar HP (mis. 1608x720) hanya memuat stream 720p dan cam

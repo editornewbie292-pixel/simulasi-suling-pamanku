@@ -779,6 +779,12 @@ def render(rencana_path, pratinjau=False):
              "-map", "[vout]", *amap, "-r", FPS, "-c:v", "libx264", "-preset", "medium", "-crf", "17",
              "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-movflags", "+faststart", utama])
         bagian.append(utama)
+        if rencana.get("musik"):
+            isi = tmp / "isi.mp4"
+            sambung(bagian, isi, tmp)
+            isi_m = tmp / "isi_musik.mp4"
+            pasang_musik(isi, isi_m, rencana["musik"])
+            bagian = [isi_m]
         if rencana.get("endcard"):
             bagian.append(rencana["endcard"])
         sambung(bagian, out, tmp)
@@ -791,6 +797,26 @@ def render(rencana_path, pratinjau=False):
     total = sum(probe(b)["durasi"] for b in [out])
     print(f"Selesai: {out} (klip {dur:.1f} dtk, total {total:.1f} dtk"
           + (", + kartu hook" if rencana.get("hook") else "") + (", + endcard)" if rencana.get("endcard") else ")"))
+
+
+def pasang_musik(inp, out, mus):
+    """Musik latar di bawah suara (kartu hook + klip; endcard tidak disentuh). Ducking otomatis:
+    musik turun saat ada suara Windah/game, naik lagi saat sepi."""
+    if isinstance(mus, str):
+        mus = {"file": mus}
+    f = Path(mus["file"])
+    if not f.is_absolute() and not f.exists():
+        f = SKILL / f
+    dur = probe(inp)["durasi"]
+    vol = float(mus.get("volume_db", -15))
+    fc = (f"[1:a]aresample=44100,aformat=channel_layouts=stereo,atrim=0:{dur:.3f},asetpts=PTS-STARTPTS,"
+          f"volume={vol}dB,afade=t=in:d=0.3,afade=t=out:st={max(0, dur - 0.8):.3f}:d=0.8[m];"
+          f"[0:a]aresample=44100,aformat=channel_layouts=stereo,asplit=2[v][sc];"
+          f"[m][sc]sidechaincompress=threshold=0.03:ratio={float(mus.get('duck_ratio', 6))}:attack=15:release=400[md];"
+          f"[v][md]amix=inputs=2:normalize=0:duration=first,alimiter=limit=0.95,"
+          f"loudnorm=I=-14:TP=-1.5:LRA=11,aresample=44100[a]")
+    run(["ffmpeg", "-v", "error", "-y", "-i", inp, "-stream_loop", "-1", "-i", f, "-filter_complex", fc,
+         "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out])
 
 
 def sambung(bagian, out, tmp):
@@ -1117,7 +1143,10 @@ def buat_hook(rencana, tmp):
     args = ["-framerate", str(FPS), "-i", fdir / "%04d.png"]
     fc = []
     lab = []
-    sfx = [("whoosh", 0.0, 0.9), ("boom", 0.22, 0.8), ("glitch", dur - 0.47, 0.6), ("whoosh", dur - 0.3, 0.7)]
+    if any((SFX_DIR / f"sting.{e}").exists() for e in ("wav", "mp3")):
+        sfx = [("sting", 0.0, 0.9), ("glitch", dur - 0.47, 0.6), ("whoosh", dur - 0.3, 0.7)]
+    else:
+        sfx = [("whoosh", 0.0, 0.9), ("boom", 0.22, 0.8), ("glitch", dur - 0.47, 0.6), ("whoosh", dur - 0.3, 0.7)]
     for k, (nama, t, vol) in enumerate(sfx):
         args += ["-i", sfx_path(nama)]
         ms = int(t * 1000)
