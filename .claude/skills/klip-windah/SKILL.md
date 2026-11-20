@@ -41,8 +41,11 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
   kirim dengan SendUserFile. Unduhan langsung Freesound diblokir dari container (403), Pixabay diblokir
   Cloudflare - pengguna yang mengunduh pilihannya. Self-host Openverse tidak membantu (indeks saja, filenya tetap
   di Freesound).
-- **Musik latar**: `"musik": {"file": "musik/latar_tiktok1_loop.wav", "volume_db": -15}` (lihat
-  `musik/SUMBER.md`): di bawah kartu hook + klip, ducking otomatis, endcard tidak disentuh. Pakai untuk klip baru.
+- **Transisi**: efek visual glitch tetap boleh, tapi BUNYINYA `sfx_transisi` (bawaan whoosh), bukan shutter/glitch.
+- **SFX & backsound dari Drive pengguna**: di awal setiap sesi edit jalankan `klip-windah sinkron-sfx`
+  (lihat `sfx/SUMBER.md`). Link Drive TIDAK boleh ditulis di repo (publik).
+- **Musik latar**: `"musik": true` (lihat `musik/SUMBER.md`): di bawah kartu hook + klip, ducking otomatis,
+  endcard tidak disentuh. Pakai untuk klip baru.
 - **SFX**: pakai file pilihan pengguna di `sfx/` (lihat `sfx/SUMBER.md`). Pengguna menilai selera SFX Claude
   jelek - jangan memilih/mengunduh SFX sendiri; minta pengguna yang memilih.
 - **Kualitas sumber menentukan HD-nya hasil.** Rekaman layar HP (mis. 1608x720) hanya memuat stream 720p dan cam
@@ -79,7 +82,10 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
    - **Posisi cam** (TikTok): di atas atau di bawah. Pengguna bilang posisinya bervariasi - selalu tanya.
    - **Momen/potongan**: usulkan rentang `potong` (mis. 0:12-0:58) dan sebutkan alasannya.
    - **Judul hook** (TikTok) atau **caption punchline** (kotak): tawarkan 2-3 pilihan.
-   Jangan tanya hal yang sudah jelas dari video.
+   - **SFX transisi** (potongan/glitch & keluar kartu hook): bawaan `whoosh`; tawarkan juga SFX lain yang ada di
+     `sfx/` (sebutkan namanya). Pengguna TIDAK suka shutter/glitch di transisi dan akan meminta penyesuaian
+     lebih lanjut - selalu tanyakan, jangan dilewati. Simpan jawabannya di `"sfx_transisi"`.
+   Pertanyaan lebih dari 4: gabungkan, atau ajukan dua kali. Jangan tanya hal yang sudah jelas dari video.
 4. **Tulis rencana** `hasil-klip/<nama>/<format>.json` (skema di bawah), jalankan `pratinjau`, **lihat** gambarnya:
    wajah utuh di panel cam, gameplay tidak terpotong aneh, judul tidak menutupi wajah. Betulkan lalu ulangi.
 5. **Render**, lalu cek beberapa frame hasil (ffmpeg `-ss T -frames:v 1`) terutama di titik efek.
