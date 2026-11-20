@@ -612,6 +612,32 @@ def bangun(rencana, tmp, pratinjau=None):
         f.append(f"[{cur}][cap]overlay=(W-w)/2:{cy}:eof_action=pass[bc]")
         cur = "bc"
 
+    # caption per frasa (gaya referensi): di sisi cam dekat sambungan (TikTok) / tepi bawah gambar (kotak)
+    capf = rencana.get("_caption") or []
+    if capf:
+        jd_end = float(rencana.get("judul_durasi", 2.5)) if rencana.get("judul") else 0
+        for k, (a, b, teks) in enumerate(capf):
+            if b <= jd_end:
+                continue
+            a = max(a, jd_end)
+            cw_, ch_ = gambar_caption_frasa(teks, tmp / f"cf{k}.png", int(rencana.get("caption_frasa_ukuran", 64)))
+            if "caption_frasa_y" in rencana:
+                cy_ = rencana["caption_frasa_y"] - ch_ / 2
+            elif fmt == "tiktok":
+                tepi = wh / 2 + 10 if wm else 10
+                cy_ = (seam - tepi - ch_) if atas else (seam + tepi)
+            else:
+                cy_ = konten_y + konten_h - ch_ * 0.6
+            cy_ = even(min(max(cy_, SAFE_ATAS), SAFE_BAWAH - ch_))
+            i = tambah("-loop", "1", "-framerate", str(FPS), "-t", f"{dur:.3f}", "-i", tmp / f"cf{k}.png")
+            f.append(f"[{i}:v]format=rgba[cf{k}]")
+            f.append(f"[{cur}][cf{k}]overlay=(W-w)/2:{cy_}:eof_action=pass:enable='between(t,{a:.3f},{b:.3f})'[bcf{k}]")
+            cur = f"bcf{k}"
+
+    if rencana.get("flash_awal") or rencana.get("hook"):  # sambungan dari kartu hook: putih memudar
+        f.append(f"[{cur}]fade=t=in:st=0:d=0.3:color=white[bfl]")
+        cur = "bfl"
+
     if wm:
         i = tambah("-loop", "1", "-framerate", str(FPS), "-t", f"{dur:.3f}", "-i", wm)
         op = float(rencana.get("watermark_opacity", 0.88))
@@ -681,6 +707,16 @@ def render(rencana_path, pratinjau=False):
             lembar.save(pp, quality=90)
             print("Pratinjau:", pp, "detik", titik)
             return
+        # caption per frasa: transkrip otomatis ke <rencana>_caption.json (bisa dikoreksi lalu render ulang)
+        cf = rencana.get("caption_frasa")
+        if cf is True or isinstance(cf, str):
+            cpath = Path(cf) if isinstance(cf, str) else Path(rencana_path).with_name(Path(rencana_path).stem + "_caption.json")
+            if not cpath.exists():
+                buat_caption_frasa(rencana, cpath)
+            rencana["_caption"] = json.loads(cpath.read_text(encoding="utf-8"))
+            print(f"  caption: {cpath} ({len(rencana['_caption'])} frasa)")
+        elif isinstance(cf, list):
+            rencana["_caption"] = cf
         inputs, f, amap, dur = bangun(rencana, tmp)
         # endcard template program WAJIB di akhir setiap video, utuh tanpa efek/filter
         if "endcard" not in rencana:
@@ -689,27 +725,291 @@ def render(rencana_path, pratinjau=False):
         if not rencana.get("endcard"):
             print("  PERINGATAN: belum ada endcard template 3 detik (assets/endcard/). Video ini BELUM memenuhi "
                   "aturan program - jangan diposting sebelum endcard dipasang.")
-        utama = tmp / "utama.mp4" if rencana.get("endcard") else out
+        bagian = []
+        if rencana.get("hook"):
+            bagian.append(buat_hook(rencana, tmp))
+        utama = tmp / "utama.mp4"
         run(["ffmpeg", "-v", "error", "-y", *inputs, "-filter_complex", ";".join(f),
              "-map", "[vout]", *amap, "-r", FPS, "-c:v", "libx264", "-preset", "medium", "-crf", "19",
              "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-movflags", "+faststart", utama])
+        bagian.append(utama)
         if rencana.get("endcard"):
-            ec = rencana["endcard"]
-            ei = probe(ec)
-            extra = []
-            if ei["audio"]:
-                a1 = "[1:a]aresample=44100,aformat=channel_layouts=stereo[ea]"
-            else:
-                extra = ["-f", "lavfi", "-t", f"{ei['durasi']:.3f}", "-i", "anullsrc=r=44100:cl=stereo"]
-                a1 = "[2:a]anull[ea]"
-            fc = (f"[0:v]setsar=1[v0];[1:v]scale={W}:{H}:force_original_aspect_ratio=decrease,"
-                  f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:black,fps={FPS},setsar=1,format=yuv420p[v1];"
-                  f"[0:a]aformat=channel_layouts=stereo[a0];{a1};"
-                  f"[v0][a0][v1][ea]concat=n=2:v=1:a=1[v][a]")
-            run(["ffmpeg", "-v", "error", "-y", "-i", utama, "-i", ec, *extra, "-filter_complex", fc,
-                 "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", "19",
-                 "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out])
-    print(f"Selesai: {out} ({dur:.1f} detik + endcard)" if rencana.get("endcard") else f"Selesai: {out} ({dur:.1f} detik)")
+            bagian.append(rencana["endcard"])
+        sambung(bagian, out, tmp)
+    total = sum(probe(b)["durasi"] for b in [out])
+    print(f"Selesai: {out} (klip {dur:.1f} dtk, total {total:.1f} dtk"
+          + (", + kartu hook" if rencana.get("hook") else "") + (", + endcard)" if rencana.get("endcard") else ")"))
+
+
+def sambung(bagian, out, tmp):
+    """Sambung beberapa video jadi satu. Bagian tidak diubah selain disamakan ukuran/fps/audio
+    (endcard tetap utuh tanpa efek)."""
+    if len(bagian) == 1:
+        shutil.copy(bagian[0], out)
+        return
+    args, fc, lab = [], [], ""
+    k = 0
+    for i, b in enumerate(bagian):
+        args += ["-i", str(b)]
+    extra = len(bagian)
+    for i, b in enumerate(bagian):
+        bi = probe(b)
+        fc.append(f"[{i}:v]scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:black,"
+                  f"fps={FPS},setsar=1,format=yuv420p[v{i}]")
+        if bi["audio"]:
+            fc.append(f"[{i}:a]aresample=44100,aformat=channel_layouts=stereo[a{i}]")
+        else:
+            args += ["-f", "lavfi", "-t", f"{bi['durasi']:.3f}", "-i", "anullsrc=r=44100:cl=stereo"]
+            fc.append(f"[{extra}:a]anull[a{i}]")
+            extra += 1
+        lab += f"[v{i}][a{i}]"
+    fc.append(f"{lab}concat=n={len(bagian)}:v=1:a=1[v][a]")
+    run(["ffmpeg", "-v", "error", "-y", *args, "-filter_complex", ";".join(fc),
+         "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", "19",
+         "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out])
+
+
+# ---------------------------------------------------------------- caption per frasa
+def segmen_simpan(rencana):
+    info = probe(rencana["input"])
+    t0, t1 = rencana.get("potong") or [0, info["durasi"]]
+    dsrc = t1 - t0
+    simpan, pos = [], 0.0
+    for a, b in sorted([float(a), float(b)] for a, b in rencana.get("buang", [])):
+        if a > pos:
+            simpan.append((pos, a))
+        pos = max(pos, b)
+    if pos < dsrc:
+        simpan.append((pos, dsrc))
+    return t0, dsrc, simpan
+
+
+def buat_caption_frasa(rencana, cpath, maks_kata=4):
+    """Transkrip audio timeline HASIL (setelah potong+buang) dengan waktu per kata, lalu kelompokkan
+    jadi frasa 2-4 kata. Hasil: [[mulai, selesai, "TEKS"], ...] di cpath."""
+    from faster_whisper import WhisperModel
+    t0, dsrc, simpan = segmen_simpan(rencana)
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{t0:.3f}", "-t", f"{dsrc:.3f}", "-i", rencana["input"],
+                          "-ac", "1", "-ar", "16000", "-f", "f32le", "-"], capture_output=True).stdout
+    a = np.frombuffer(raw, dtype=np.float32)
+    a = np.concatenate([a[int(x * 16000):int(y * 16000)] for x, y in simpan]).copy()
+    m = WhisperModel(rencana.get("model_caption", "small"), device="cpu", compute_type="int8")
+    # tanpa initial_prompt & tanpa konteks sebelumnya: mencegah halusinasi kata berulang
+    segs, _ = m.transcribe(a, language="id", word_timestamps=True, vad_filter=True,
+                           condition_on_previous_text=False)
+    frasa, cur = [], []
+    for s_ in segs:
+        for w in s_.words:
+            kata = w.word.strip()
+            if not kata:
+                continue
+            if cur and (len(cur) >= maks_kata or w.start - cur[-1][1] > 0.45):
+                frasa.append(cur)
+                cur = []
+            cur.append((w.start, w.end, kata))
+            if kata[-1] in ".,!?":
+                frasa.append(cur)
+                cur = []
+    if cur:
+        frasa.append(cur)
+    hasil, sblm = [], None
+    for fr in frasa:
+        teks = " ".join(k for _, _, k in fr).strip(" .,").upper()
+        if teks == sblm or len(set(k.lower().strip(".,!?") for _, _, k in fr)) == 1 and len(fr) > 2:
+            continue  # buang pengulangan (tanda halusinasi / tidak terbaca)
+        sblm = teks
+        mulai, selesai = fr[0][0], min(max(fr[-1][1], fr[0][0] + 0.6), fr[0][0] + 2.5)
+        hasil.append([round(mulai, 2), round(selesai, 2), teks])
+    for i in range(len(hasil) - 1):  # tahan sampai frasa berikut (maks 0,6 dtk jeda)
+        hasil[i][1] = round(min(max(hasil[i][1], hasil[i + 1][0] - 0.6), hasil[i + 1][0]), 2)
+    cpath.write_text(json.dumps(hasil, indent=1, ensure_ascii=False), encoding="utf-8")
+    print("  transkrip caption:")
+    for h in hasil:
+        print(f"    {h[0]:6.2f}-{h[1]:6.2f}  {h[2]}")
+
+
+def gambar_caption_frasa(teks, path, size=64, maxw=W - 140):
+    """Gaya referensi: kapital, condensed tebal (Anton), putih, outline hitam + bayangan."""
+    f = font(FONT_JUDUL, size, bold=False)
+    baris = bungkus(teks.upper(), f, size, maxw)
+    lh = int(size * 1.12)
+    lebar = int(max(ukur(b, f, size) for b in baris)) + 40
+    tinggi = lh * len(baris) + 30
+    img = Image.new("RGBA", (lebar, tinggi), (0, 0, 0, 0))
+    bay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    for i, b in enumerate(baris):
+        x = (lebar - ukur(b, f, size)) / 2
+        tulis(bay, (x + 4, 12 + i * lh + 5), b, f, size, fill=(0, 0, 0, 170), stroke=6, stroke_fill=(0, 0, 0, 170))
+    img.alpha_composite(bay)
+    for i, b in enumerate(baris):
+        x = (lebar - ukur(b, f, size)) / 2
+        tulis(img, (x, 12 + i * lh), b, f, size, fill="white", stroke=6, stroke_fill="black")
+    img.save(path)
+    return img.size
+
+
+# ---------------------------------------------------------------- kartu hook
+_rembg_sesi = None
+
+
+def cutout(img):
+    """Hapus latar (rembg u2net_human_seg, sekitar 170 MB diunduh sekali)."""
+    global _rembg_sesi
+    from rembg import remove, new_session
+    if _rembg_sesi is None:
+        _rembg_sesi = new_session("u2net_human_seg")
+    return remove(img.convert("RGB"), session=_rembg_sesi).convert("RGBA")
+
+
+def ambil_frame_sumber(src, t):
+    with tempfile.TemporaryDirectory() as td:
+        p = Path(td) / "f.png"
+        run(["ffmpeg", "-v", "error", "-y", "-ss", f"{t:.3f}", "-i", src, "-frames:v", "1", p], quiet=True)
+        return Image.open(p).convert("RGB")
+
+
+def buat_hook(rencana, tmp):
+    """Kartu hook ala thumbnail (gaya referensi): latar game diburamkan, cutout wajah Windah besar
+    berbingkai putih, teks 3 baris kontras (putih/merah/kuning, outline tebal), watermark di safe zone.
+    Animasi: blur->tajam + punch-zoom masuk, zoom pelan, glitch RGB, flash putih keluar. SFX otomatis."""
+    from PIL import ImageFilter, ImageEnhance, ImageChops
+    hk = rencana["hook"]
+    src = rencana["input"]
+    t0 = (rencana.get("potong") or [0, 0])[0]
+    dur = float(hk.get("durasi", 2.6))
+    stream = rencana.get("stream_box")
+    cam = rencana["cam_box"]
+
+    # latar: frame game penuh layar, blur, sedikit gelap + gradasi bawah
+    fg = ambil_frame_sumber(src, t0 + hk.get("detik_latar", 0))
+    sx, sy, sw, sh = stream or [0, 0, fg.width, fg.height]
+    cw = min(sw, sh * W / H)
+    lat = fg.crop((int(sx + (sw - cw) / 2), sy, int(sx + (sw + cw) / 2), sy + sh)).resize((W, H), Image.LANCZOS)
+    lat = ImageEnhance.Brightness(lat.filter(ImageFilter.GaussianBlur(18))).enhance(0.75).convert("RGBA")
+    grad = Image.new("RGBA", (W, 900), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(grad)
+    for yy in range(900):
+        gd.line([(0, yy), (W, yy)], fill=(0, 0, 0, int(220 * (yy / 900) ** 1.5)))
+    lat.alpha_composite(grad, (0, H - 900))
+
+    # teks 3 baris: baris tengah paling besar; kata dalam "sorot" diwarnai
+    baris = hk["teks"]
+    warna_baris = hk.get("warna", ["putih", "putih", "kuning"])
+    peta = {"putih": (255, 255, 255), "merah": (255, 48, 48), "kuning": (255, 205, 0), "oranye": (255, 140, 0),
+            "hijau": (80, 230, 90), "pink": (255, 70, 170)}
+    skala = hk.get("skala", [0.8, 1.0, 0.72])
+    sorot = {k.upper(): peta.get(v, (255, 48, 48)) for k, v in hk.get("sorot", {}).items()}
+    besar = int(hk.get("ukuran_teks", 150))
+    blok = []
+    for i, b in enumerate(baris):
+        sz = int(besar * (skala[i] if i < len(skala) else 0.8))
+        while True:
+            ft = font(FONT_JUDUL, sz, bold=False)
+            if ukur(b.upper(), ft, sz) <= W - 90 or sz < 50:
+                break
+            sz -= 4
+        blok.append((b.upper(), ft, sz, peta.get(warna_baris[i] if i < len(warna_baris) else "putih", (255, 255, 255))))
+    tinggi_blok = sum(int(sz * 1.02) for _, _, sz, _ in blok)
+    ty = int(hk.get("y_teks", 1430 - tinggi_blok))
+    teks_img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    yy = ty
+    for b, ft, sz, wr in blok:
+        x = (W - ukur(b, ft, sz)) / 2
+        bay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        tulis(bay, (x + 6, yy + 8), b, ft, sz, fill=(0, 0, 0, 200), stroke=max(8, sz // 11), stroke_fill=(0, 0, 0, 200))
+        teks_img.alpha_composite(bay.filter(ImageFilter.GaussianBlur(4)))
+        tulis(teks_img, (x, yy), b, ft, sz, fill=wr, stroke=max(8, sz // 11), stroke_fill="black", warna_kata=sorot)
+        yy += int(sz * 1.02)
+
+    # wajah: cutout dari cam, diperbesar, bingkai putih + bayangan
+    fc = ambil_frame_sumber(src, t0 + hk.get("detik_wajah", hk.get("detik_latar", 0)))
+    x, y, w, h = cam
+    wj = cutout(fc.crop((x, y, x + w, y + h)))
+    bb = wj.getchannel("A").getbbox()
+    if bb:
+        wj = wj.crop(bb)
+    lebar_wajah = int(hk.get("lebar_wajah", 880))
+    wj = wj.resize((lebar_wajah, int(wj.height * lebar_wajah / wj.width)), Image.LANCZOS)
+    # bagian bawah memudar (potongan cam lurus tidak terlihat kaku)
+    pudar = Image.linear_gradient("L").resize((wj.width, wj.height))
+    pudar = pudar.point(lambda v: 255 if v < 160 else int(255 * (255 - v) / 95))
+    wj.putalpha(ImageChops.multiply(wj.getchannel("A"), pudar))
+    alpha = wj.getchannel("A")
+    garis = alpha.filter(ImageFilter.MaxFilter(17))
+    lapis = Image.new("RGBA", (wj.width + 60, wj.height + 60), (0, 0, 0, 0))
+    bay = Image.new("RGBA", lapis.size, (0, 0, 0, 0))
+    bay.paste((0, 0, 0, 150), (36, 44), garis)
+    lapis.alpha_composite(bay.filter(ImageFilter.GaussianBlur(14)))
+    lapis.paste((255, 255, 255, 255), (30, 30), garis)
+    lapis.alpha_composite(wj, (30, 30))
+    depan = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    # wajah di atas teks: teks hanya menutupi dada/tangan (seperti referensi)
+    wy_wajah = int(hk.get("y_wajah", ty - lapis.height * float(hk.get("naik_wajah", 0.74))))
+    depan.alpha_composite(lapis, ((W - lapis.width) // 2, max(300, wy_wajah)))
+    depan.alpha_composite(teks_img)
+
+    # watermark program (wajib) di safe zone atas
+    wm = rencana.get("watermark", str(WATERMARK) if WATERMARK.exists() else None)
+    wm_img = None
+    if wm:
+        wi = Image.open(wm).convert("RGBA")
+        ww = int(W * 0.68)
+        wm_img = wi.resize((ww, int(wi.height * ww / wi.width)), Image.LANCZOS)
+
+    # animasi per frame
+    fdir = tmp / "hook"
+    fdir.mkdir(exist_ok=True)
+    n = int(round(dur * FPS))
+    for i in range(n):
+        t = i / FPS
+        if t < 0.3:  # masuk: blur -> tajam, zoom 1.18 -> 1.0
+            u = 1 - (1 - t / 0.3) ** 3
+            zoom, blur = 1.18 - 0.18 * u, 22 * (1 - u)
+        else:
+            zoom, blur = 1.0 + 0.035 * (t - 0.3) / max(0.1, dur - 0.3), 0
+        bg = lat.resize((int(W * (1 + 0.04 * t / dur)), int(H * (1 + 0.04 * t / dur))))
+        bg = bg.crop(((bg.width - W) // 2, (bg.height - H) // 2, (bg.width - W) // 2 + W, (bg.height - H) // 2 + H))
+        fz = depan.resize((int(W * zoom), int(H * zoom)), Image.BILINEAR)
+        fz = fz.crop(((fz.width - W) // 2, (fz.height - H) // 2, (fz.width - W) // 2 + W, (fz.height - H) // 2 + H))
+        fr = bg.copy()
+        fr.alpha_composite(fz)
+        if wm_img:
+            fr.alpha_composite(wm_img, ((W - wm_img.width) // 2, 170))
+        fr = fr.convert("RGB")
+        if blur:
+            fr = fr.filter(ImageFilter.GaussianBlur(blur))
+        if dur - 0.45 <= t < dur - 0.25:  # glitch RGB
+            r, g, b_ = fr.split()
+            fr = Image.merge("RGB", (ImageChops.offset(r, -18, 0), g, ImageChops.offset(b_, 18, 4)))
+        if t >= dur - 0.25:  # flash putih keluar
+            u = (t - (dur - 0.25)) / 0.25
+            fr = Image.blend(fr.filter(ImageFilter.GaussianBlur(10 * u)), Image.new("RGB", (W, H), "white"), min(1, u * 1.1))
+        fr.save(fdir / f"{i:04d}.png")
+
+    # audio: SFX + (opsional) cuplikan suara asli
+    out = tmp / "hook.mp4"
+    args = ["-framerate", str(FPS), "-i", fdir / "%04d.png"]
+    fc = []
+    lab = []
+    sfx = [("whoosh", 0.0, 0.9), ("boom", 0.22, 0.8), ("glitch", dur - 0.47, 0.6), ("whoosh", dur - 0.3, 0.7)]
+    for k, (nama, t, vol) in enumerate(sfx):
+        args += ["-i", sfx_path(nama)]
+        ms = int(t * 1000)
+        fc.append(f"[{k + 1}:a]aresample=44100,aformat=channel_layouts=stereo,adelay={ms}|{ms},volume={vol}[s{k}]")
+        lab.append(f"[s{k}]")
+    if hk.get("audio_asli"):
+        a, b = hk["audio_asli"]
+        args += ["-ss", f"{t0 + a:.3f}", "-t", f"{b - a:.3f}", "-i", src]
+        k = len(sfx) + 1
+        fc.append(f"[{k}:a]aresample=44100,aformat=channel_layouts=stereo,volume=0.9[asli]")
+        lab.append("[asli]")
+    fc.append("".join(lab) + f"amix=inputs={len(lab)}:normalize=0:duration=longest,atrim=0:{dur:.3f},"
+              f"apad=whole_dur={dur:.3f},loudnorm=I=-14:TP=-1.5:LRA=11,aresample=44100[a]")
+    run(["ffmpeg", "-v", "error", "-y", *args, "-filter_complex", ";".join(fc), "-map", "0:v", "-map", "[a]",
+         "-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-pix_fmt", "yuv420p",
+         "-c:a", "aac", "-b:a", "192k", "-ar", "44100", out])
+    print(f"  kartu hook: {dur:.1f} dtk")
+    return out
 
 
 def thumbnail(rencana_path):

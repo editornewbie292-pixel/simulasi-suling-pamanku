@@ -87,6 +87,26 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
     "LET'S GO"). Maksimal 1-2 per klip.
   - `cam_penuh` `[[mulai, selesai]]`: potong ke wajah layar penuh untuk reaksi besar (opsional di TikTok).
 
+### Kartu hook + caption per frasa (standar "editan bagus" dari referensi pengguna)
+Dipakai di setiap klip kecuali pengguna minta lain. Kriteria pengguna: hook kartu ala thumbnail di 2-3 detik
+pertama, kalimat hook bercerita kontras, caption di setiap ucapan, transisi flash/blur, watermark di safe zone.
+- `"hook"`: kartu 2-3 detik di depan klip (menggantikan kotak `judul`; jangan pakai keduanya):
+  latar frame game diburamkan (`detik_latar`, pilih frame paling dramatis/payoff), **cutout wajah Windah**
+  (rembg `u2net_human_seg`, model 176 MB diunduh sekali ke `~/.u2net`) dari `detik_wajah` dengan bingkai putih,
+  bawah memudar; teks 3 baris (`teks`, `warna` per baris: putih/merah/kuning/oranye/hijau/pink, `skala` per
+  baris, `sorot` {KATA: warna}). Animasi: blur->tajam + punch-zoom, zoom pelan, glitch RGB, flash putih ke klip.
+  SFX otomatis (whoosh, boom, glitch, whoosh). `audio_asli: [a, b]` = cuplikan suara asli Windah (detik sumber)
+  diputar di bawah kartu, mis. kalimat sesumbarnya. `naik_wajah` (bawaan 0,74) menaikkan wajah bila tertutup teks.
+  Pola teks hook: lihat daftar di bawah; jangan hanya "dulu vs sekarang".
+- `"caption_frasa": true`: transkrip timeline hasil (Whisper small, waktu per kata) jadi frasa 2-4 kata ke
+  `<rencana>_caption.json`, lalu ditampilkan (Anton putih, outline hitam + bayangan) di sisi cam dekat sambungan
+  (TikTok) / tepi bawah gambar (kotak). **Selalu baca dan koreksi file caption itu sebelum render final**:
+  Whisper sering salah dengar bahasa gaul dan bisa berhalusinasi kata berulang. Bagian yang tidak jelas: hapus,
+  jangan menebak. Format: `[[mulai, selesai, "TEKS"], ...]` dalam detik timeline hasil.
+- Pola hook: ekspektasi vs realita (NGAKU ___ / ENDINGNYA ___), rekor/pertama, angka (streamcharts), rahasia,
+  pertanyaan, reaksi, satu-satunya, peringatan, kegagalan lucu ("13 TAHUN NUNGGU / 5 MENIT LANGSUNG ___"),
+  perbandingan. Tawarkan 2-3 pilihan ke pengguna.
+
 ### Kotak (`"format": "kotak"`) - "1:1" versi referensi
 - Frame stream utuh **dengan cam asli seperti di stream** (normal), diletakkan di tengah latar hitam 9:16.
   Referensi memotong samping ke rasio sekitar 5:4 (`"rasio_kotak": 1.25`); cam asli dijaga tetap kelihatan.
