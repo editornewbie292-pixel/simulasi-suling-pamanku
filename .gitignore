@@ -1,3 +1,4 @@
 hasil-klip/
 .claude/skills/*/.venv/
 .claude/skills/*/sfx/bawaan/
+__pycache__/
