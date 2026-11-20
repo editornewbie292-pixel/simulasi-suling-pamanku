@@ -190,6 +190,9 @@ Semua kotak dalam **piksel video sumber** `[x, y, lebar, tinggi]`; semua detik *
 ```
 `buang`: `[[a, b], ...]` rentang yang dihapus, dalam detik **sumber** relatif awal `potong`; semua detik efek
 lain (`glitch`, `impact`, `speedlines`, `cam_penuh`, `tutup`) memakai timeline **hasil** setelah dibuang.
+`zoom`: `[[mulai, selesai, x, y, w, h], ...]` punch-in panel game (TikTok) / gambar (kotak) ke area sumber -
+untuk kejadian di pinggir layar yang terpotong crop tengah (mis. pesawat jatuh di langit kanan atas). Hindari
+area cam asli di dalam kotak zoom. Lacak posisi objeknya dulu dengan crop frame per 0,5 detik.
 `tutup`: `[x, y, w, h, mulai, selesai]` area sumber yang diburamkan. Thumbnail: `fokus_cam_y` 0-1 menggeser wajah
 (besar = wajah naik), `fokus_game_x/y`, `zoom_game`, `zoom_cam`.
 Kotak: `"format": "kotak"`, `"rasio_kotak": 1.25`, `"caption": "salip aelah.."`, `"cam_penuh": [[9.0, 11.5]]`,
