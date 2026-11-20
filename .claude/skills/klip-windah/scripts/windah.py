@@ -497,6 +497,21 @@ def bangun(rencana, tmp, pratinjau=None):
     else:
         f.append(f"[{pre}]null[s0]")
 
+    cam_hd = rencana.get("cam_hd")
+    if cam_hd is True:
+        cam_hd = str(Path(rencana.get("_rencana_path", "x.json")).with_name(Path(rencana.get("_rencana_path", "x.json")).stem + "_camhd.mp4"))
+    if cam_hd and Path(cam_hd).exists() and cam:
+        # sumber cam = video hasil upscale AI (sudah di timeline hasil); kotaknya = seluruh frame
+        if pratinjau is not None:
+            i_hd = tambah("-ss", f"{pratinjau:.3f}", "-t", "0.2", "-i", cam_hd)
+        else:
+            i_hd = tambah("-i", cam_hd)
+        f.append(f"[{i_hd}:v]fps={FPS},setpts=PTS-STARTPTS{geser},split=2[hd1][hd2]")
+        cam_src = ["hd1", "hd2"]
+        cam = [0, 0, even(cam[2]) * 4, even(cam[3]) * 4]
+    else:
+        cam_src = None
+
     if fmt == "tiktok":
         if not cam:
             raise SystemExit("format tiktok butuh cam_box")
@@ -508,7 +523,7 @@ def bangun(rencana, tmp, pratinjau=None):
             gw = min(sw, sh * W / gh)
             game = [sx + (sw - gw) / 2, sy, gw, sh]
         f.append(cover("s0", game, W, gh, "game"))
-        f.append(cover("s1", cam, W, ch, "cam"))
+        f.append(cover(cam_src[0] if cam_src else "s1", cam, W, ch, "cam"))
         atas = rencana.get("posisi_cam", "bawah") == "atas"
         f.append("[cam][game]vstack[base0]" if atas else "[game][cam]vstack[base0]")
         seam = ch if atas else gh
@@ -537,7 +552,7 @@ def bangun(rencana, tmp, pratinjau=None):
     if penuh and cam:
         th = H if fmt == "tiktok" else konten_h
         ty = 0 if fmt == "tiktok" else konten_y
-        f.append(cover(f"s{nxt}", cam, W, th, "campenuh"))
+        f.append(cover(cam_src[1] if cam_src else f"s{nxt}", cam, W, th, "campenuh"))
         f.append(f"[{cur}][campenuh]overlay=0:{ty}:enable='{antara(penuh)}'[b1]")
         cur = "b1"
 
@@ -651,6 +666,8 @@ def bangun(rencana, tmp, pratinjau=None):
         f.append(f"[{cur}][wm]overlay=(W-w)/2:{wy}:eof_action=pass[bw]")
         cur = "bw"
 
+    if cam_src and not (penuh and cam):
+        f.append(f"[{cam_src[1]}]nullsink")
     f.append(f"[{cur}]format=yuv420p[vout]")
 
     # audio
@@ -691,6 +708,7 @@ def bangun(rencana, tmp, pratinjau=None):
 
 def render(rencana_path, pratinjau=False):
     rencana = json.loads(Path(rencana_path).read_text(encoding="utf-8"))
+    rencana["_rencana_path"] = str(rencana_path)
     out = Path(rencana.get("output") or Path(rencana_path).with_suffix(".mp4"))
     out.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as td:
@@ -1032,6 +1050,47 @@ def buat_hook(rencana, tmp):
     return out
 
 
+def buat_cam_hd(rencana, out_path):
+    """Upscale AI x4 panel cam di timeline HASIL (setelah potong+buang), dicampur dengan Lanczos agar natural.
+    Lambat (~1 dtk/frame di CPU): jalankan di background."""
+    import time
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from upscale import upscale
+    t0, dsrc, simpan = segmen_simpan(rencana)
+    x, y, w, h = map(even, rencana["cam_box"])
+    campur = float(rencana.get("cam_hd_campur", 0.75))
+    n_seg = len(simpan)
+    fc = [f"[0:v]crop={w}:{h}:{x}:{y},fps={FPS},setpts=PTS-STARTPTS,split={n_seg}" + "".join(f"[c{k}]" for k in range(n_seg))]
+    for k, (a, b) in enumerate(simpan):
+        fc.append(f"[c{k}]trim=start={a:.3f}:end={b:.3f},setpts=PTS-STARTPTS[t{k}]")
+    fc.append("".join(f"[t{k}]" for k in range(n_seg)) + f"concat=n={n_seg}:v=1:a=0,format=rgb24[o]")
+    dec = subprocess.Popen(["ffmpeg", "-v", "error", "-ss", f"{t0:.3f}", "-t", f"{dsrc:.3f}", "-i", rencana["input"],
+                            "-filter_complex", ";".join(fc), "-map", "[o]", "-f", "rawvideo", "-"],
+                           stdout=subprocess.PIPE)
+    enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w * 4}x{h * 4}",
+                            "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "14",
+                            "-pix_fmt", "yuv420p", str(out_path)], stdin=subprocess.PIPE)
+    ukuran = w * h * 3
+    n, mulai = 0, time.time()
+    total = int(sum(b - a for a, b in simpan) * FPS)
+    while True:
+        buf = dec.stdout.read(ukuran)
+        if len(buf) < ukuran:
+            break
+        fr = np.frombuffer(buf, np.uint8).reshape(h, w, 3)
+        ai = upscale(fr).astype(np.float32)
+        lz = np.asarray(Image.fromarray(fr).resize((w * 4, h * 4), Image.LANCZOS), np.float32)
+        enc.stdin.write(np.clip(ai * campur + lz * (1 - campur), 0, 255).astype(np.uint8).tobytes())
+        n += 1
+        if n % 60 == 0:
+            el = time.time() - mulai
+            print(f"  cam HD {n}/{total} frame, sisa ~{el / n * (total - n) / 60:.1f} menit", flush=True)
+    enc.stdin.close()
+    enc.wait()
+    dec.wait()
+    print(f"Cam HD selesai: {out_path} ({n} frame)")
+
+
 def thumbnail(rencana_path):
     """Cover 9:16: frame game (mis. WASTED) + wajah Windah besar + teks besar ber-outline."""
     from PIL import ImageEnhance
@@ -1119,9 +1178,14 @@ def main():
     r = sp.add_parser("render")
     r.add_argument("rencana")
     sp.add_parser("sfx")
+    c = sp.add_parser("camhd")
+    c.add_argument("rencana")
     t = sp.add_parser("thumbnail")
     t.add_argument("rencana")
     args = ap.parse_args()
+    if args.cmd == "camhd":
+        r = json.loads(Path(args.rencana).read_text(encoding="utf-8"))
+        return buat_cam_hd(r, Path(args.rencana).with_name(Path(args.rencana).stem + "_camhd.mp4"))
     if args.cmd == "thumbnail":
         return thumbnail(args.rencana)
     if args.cmd == "analisis":
