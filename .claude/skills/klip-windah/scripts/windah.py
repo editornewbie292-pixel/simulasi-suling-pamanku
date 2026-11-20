@@ -782,6 +782,12 @@ def render(rencana_path, pratinjau=False):
         if rencana.get("endcard"):
             bagian.append(rencana["endcard"])
         sambung(bagian, out, tmp)
+    # versi siap upload: 1080x1920, bitrate maks 4,5 Mbps (sekitar 20-30 MB) - mudah disimpan di HP
+    up = Path(rencana.get("output_upload") or out.with_name(out.stem + "_upload.mp4"))
+    run(["ffmpeg", "-v", "error", "-y", "-i", out, "-c:v", "libx264", "-preset", "slow", "-crf", "21",
+         "-maxrate", "4500k", "-bufsize", "9000k", "-profile:v", "high", "-level", "4.1", "-pix_fmt", "yuv420p",
+         "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-movflags", "+faststart", up], quiet=True)
+    print(f"Siap upload: {up} ({up.stat().st_size / 1048576:.0f} MB)")
     total = sum(probe(b)["durasi"] for b in [out])
     print(f"Selesai: {out} (klip {dur:.1f} dtk, total {total:.1f} dtk"
           + (", + kartu hook" if rencana.get("hook") else "") + (", + endcard)" if rencana.get("endcard") else ")"))

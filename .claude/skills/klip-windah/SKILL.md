@@ -85,7 +85,9 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
    (teks tidak menabrak tulisan penting game, wajah + tangan/ekspresi utuh). Gaya bawaan: frame game paling
    dramatis (mis. WASTED) di atas, wajah Windah besar di bawah, teks Anton besar putih ber-outline hitam di atas
    dengan kata kunci kuning (`sorot`), emoji boleh.
-7. **Kirim** MP4 ke pengguna dengan SendUserFile, plus ringkasan: durasi, efek di detik berapa, saran judul
+7. **Kirim** versi `*_upload.mp4` (otomatis dibuat render: 1080x1920, maks 4,5 Mbps, ~20-30 MB) dengan
+   SendUserFile `display: "attach"` - file besar (50-90 MB) sulit disimpan pengguna ke galeri HP.
+   Beri nama jelas, mis. `1_Windah_Bigfoot_GTA6.mp4` (`"output_upload"` di rencana). Kirim MP4 ke pengguna dengan SendUserFile, plus ringkasan: durasi, efek di detik berapa, saran judul
    postingan + hashtag. Tawarkan revisi (posisi, judul, efek). **Jangan pernah memposting untuk pengguna.**
 
 ## Gaya (dari video referensi pengguna)
