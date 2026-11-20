@@ -404,11 +404,15 @@ def buat_sfx():
     print("SFX bawaan dibuat di", SFX_BAWAAN)
 
 
+SFX_ALIAS = {"glitch": ["glitch", "shutter"]}  # tanpa glitch milik pengguna: pakai shutter-nya
+
+
 def sfx_path(nama):
-    for ext in ("wav", "mp3", "m4a", "ogg"):
-        p = SFX_DIR / f"{nama}.{ext}"
-        if p.exists():
-            return p  # SFX milik pengguna menang
+    for n in SFX_ALIAS.get(nama, [nama]):
+        for ext in ("wav", "mp3", "m4a", "ogg"):
+            p = SFX_DIR / f"{n}.{ext}"
+            if p.exists():
+                return p  # SFX milik pengguna menang
     p = SFX_BAWAAN / f"{nama}.wav"
     if not p.exists():
         buat_sfx()
@@ -666,8 +670,14 @@ def bangun(rencana, tmp, pratinjau=None):
         f.append(f"[{cur}][wm]overlay=(W-w)/2:{wy}:eof_action=pass[bw]")
         cur = "bw"
 
-    if cam_src and not (penuh and cam):
-        f.append(f"[{cam_src[1]}]nullsink")
+    if cam_src:
+        if not (penuh and cam):
+            f.append(f"[{cam_src[1]}]nullsink")
+        # keluaran split sumber untuk cam tidak terpakai (cam diambil dari video HD)
+        if fmt == "tiktok":
+            f.append("[s1]nullsink")
+        if penuh:
+            f.append(f"[s{nxt}]nullsink")
     f.append(f"[{cur}]format=yuv420p[vout]")
 
     # audio

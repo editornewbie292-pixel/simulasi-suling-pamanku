@@ -32,6 +32,12 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
    (392.505), di atas IShowSpeed (371.840). Selalu sebut tanggal datanya bila dipakai di video.
 
 ## Alur kerja (ikuti urutannya)
+- **Cam HD (upscale AI)**: `camhd RENCANA.json` membuat `<rencana>_camhd.mp4` (Real-ESRGAN General x4v3 ONNX,
+  4,8 MB dari huggingface.co, dicampur 75% AI + 25% Lanczos = `cam_hd_campur`) di timeline hasil; lalu
+  `"cam_hd": true` di rencana. Lambat (~1 dtk/frame; 45 dtk klip = ~22 menit): jalankan di background SETELAH
+  `potong`/`buang`/`cam_box` final (berubah = buat ulang). Pengguna menyetujui hasilnya untuk klip Bigfoot.
+- **SFX**: pakai file pilihan pengguna di `sfx/` (lihat `sfx/SUMBER.md`). Pengguna menilai selera SFX Claude
+  jelek - jangan memilih/mengunduh SFX sendiri; minta pengguna yang memilih.
 - **Kualitas sumber menentukan HD-nya hasil.** Rekaman layar HP (mis. 1608x720) hanya memuat stream 720p dan cam
   ~270 px yang harus diperbesar ~4x. Render memakai Lanczos + penajaman otomatis, tapi tidak bisa menambah detail.
   Sarankan pengguna merekam dari PC/laptop layar 1080p+ (OBS / Xbox Game Bar Win+G), YouTube 1080p60 layar penuh,
