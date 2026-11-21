@@ -11,6 +11,7 @@ import argparse
 import json
 import math
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -487,6 +488,11 @@ def bangun(rencana, tmp, pratinjau=None):
     zoom = rencana.get("zoom", [])  # [[mulai, selesai, x, y, w, h], ...] punch-in panel game ke area sumber
     i_zoom0 = butuh
     butuh += len(zoom)
+    stiker = [st if isinstance(st, dict) else {"mulai": st[0], "selesai": st[1], "teks": st[2] if len(st) > 2 else ""}
+              for st in rencana.get("stiker", [])] if rencana.get("cam_box") else []
+    i_stk0 = butuh
+    butuh += len(stiker)
+    cam_asli = rencana.get("cam_box")
     if pratinjau is None and len(simpan) > 1:
         n = len(simpan)
         f.append(f"[0:v]fps={FPS},setpts=PTS-STARTPTS,split={n}" + "".join(f"[vs{k}]" for k in range(n)))
@@ -622,6 +628,8 @@ def bangun(rencana, tmp, pratinjau=None):
             wy = rencana["watermark_y"] - wh / 2
         elif fmt == "tiktok":
             wy = seam - wh / 2  # di sela facecam & gameplay
+        elif rencana.get("bar_judul"):  # bar judul di atas gambar -> watermark di bawah gambar
+            wy = konten_y + konten_h + 24
         else:
             wy = konten_y - wh - 24
         wy = even(min(max(wy, SAFE_ATAS), SAFE_BAWAH - wh))
@@ -661,12 +669,20 @@ def bangun(rencana, tmp, pratinjau=None):
             if b <= jd_end:
                 continue
             a = max(a, jd_end)
-            cw_, ch_ = gambar_caption_frasa(teks, tmp / f"cf{k}.png", int(rencana.get("caption_frasa_ukuran", 64)))
+            if rencana.get("caption_mode") == "kata":  # caption 1 kata berwarna (gaya akun4)
+                urut = rencana.get("caption_warna", ["kuning", "putih", "hijau"])
+                cw_, ch_ = gambar_caption_frasa(kata_kunci(teks), tmp / f"cf{k}.png",
+                                                int(rencana.get("caption_frasa_ukuran", 76)),
+                                                warna=WARNA.get(urut[k % len(urut)], (255, 255, 255)))
+            else:
+                cw_, ch_ = gambar_caption_frasa(teks, tmp / f"cf{k}.png", int(rencana.get("caption_frasa_ukuran", 64)))
             if "caption_frasa_y" in rencana:
                 cy_ = rencana["caption_frasa_y"] - ch_ / 2
             elif fmt == "tiktok":
                 tepi = wh / 2 + 10 if wm else 10
                 cy_ = (seam - tepi - ch_) if atas else (seam + tepi)
+            elif rencana.get("bar_judul") and wm:  # watermark di bawah gambar -> caption di dalam gambar
+                cy_ = konten_y + konten_h - ch_ - 10
             else:
                 cy_ = konten_y + konten_h - ch_ * 0.6
             cy_ = even(min(max(cy_, SAFE_ATAS), SAFE_BAWAH - ch_))
@@ -674,6 +690,51 @@ def bangun(rencana, tmp, pratinjau=None):
             f.append(f"[{i}:v]format=rgba[cf{k}]")
             f.append(f"[{cur}][cf{k}]overlay=(W-w)/2:{cy_}:eof_action=pass:enable='between(t,{a:.3f},{b:.3f})'[bcf{k}]")
             cur = f"bcf{k}"
+
+    # stiker reaksi (gaya akun5 "melongo"): wajah Windah diperbesar berbingkai putih + teks reaksi
+    for k, st in enumerate(stiker):
+        cx_, cy_, cw0_, ch0_ = cam_asli
+        zm = float(st.get("zoom", 1.35))
+        bw_, bh_ = cw0_ / zm, ch0_ / zm
+        fy = float(st.get("fokus_y", 0.42))
+        box_ = [cx_ + (cw0_ - bw_) / 2, cy_ + (ch0_ - bh_) * fy, bw_, bh_]
+        lw = even(W * float(st.get("lebar", 0.5)))
+        lh_ = even(lw * bh_ / bw_)
+        f.append(cover(f"s{i_stk0 + k}", box_, lw, lh_, f"stk{k}r"))
+        f.append(f"[stk{k}r]pad={lw + 12}:{lh_ + 12}:6:6:white[stk{k}]")
+        if fmt == "tiktok":
+            pyc = (ch + gh / 2) if atas else gh / 2
+        else:
+            pyc = konten_y + konten_h / 2
+        px_ = even(W * float(st.get("x", 0.5)) - (lw + 12) / 2)
+        py_ = even(float(st["y"]) * H - (lh_ + 12) / 2) if "y" in st else even(pyc - (lh_ + 12) / 2)
+        en = f"between(t,{float(st['mulai']):.3f},{float(st['selesai']):.3f})"
+        f.append(f"[{cur}][stk{k}]overlay={px_}:{py_}:enable='{en}'[bstk{k}]")
+        cur = f"bstk{k}"
+        if st.get("teks"):
+            tw_, th_ = gambar_label(st["teks"], tmp / f"stklab{k}.png", int(st.get("ukuran", 64)))
+            i = tambah("-loop", "1", "-framerate", str(FPS), "-t", f"{dur:.3f}", "-i", tmp / f"stklab{k}.png")
+            f.append(f"[{i}:v]format=rgba[stl{k}]")
+            f.append(f"[{cur}][stl{k}]overlay={even(px_ + (lw + 12 - tw_) / 2)}:{even(py_ + lh_ + 12 - th_ * 0.9)}:"
+                     f"eof_action=pass:enable='{en}'[bstl{k}]")
+            cur = f"bstl{k}"
+    if not stiker and "stiker" in rencana and not rencana.get("cam_box"):
+        print("  PERINGATAN: stiker butuh cam_box - dilewati.")
+
+    # bar judul statis (gaya viral: bar putih di atas gambar sepanjang video, pengganti kartu hook)
+    if rencana.get("bar_judul"):
+        bw2, bh2 = gambar_bar_judul(rencana["bar_judul"], tmp / "bar.png", W, rencana.get("bar_gaya", "hitam"),
+                                    int(rencana.get("bar_ukuran", 56)))
+        if "bar_y" in rencana:
+            by2 = rencana["bar_y"]
+        elif fmt == "tiktok":
+            by2 = SAFE_ATAS - 30
+        else:
+            by2 = max(SAFE_ATAS - 60, konten_y - bh2)
+        i = tambah("-loop", "1", "-framerate", str(FPS), "-t", f"{dur:.3f}", "-i", tmp / "bar.png")
+        f.append(f"[{i}:v]format=rgba[barj]")
+        f.append(f"[{cur}][barj]overlay=0:{even(by2)}:eof_action=pass[bbar]")
+        cur = "bbar"
 
     if rencana.get("flash_awal") or rencana.get("hook"):  # sambungan dari kartu hook: putih memudar
         f.append(f"[{cur}]fade=t=in:st=0:d=0.3:color=white[bfl]")
@@ -743,21 +804,27 @@ def buat_get_out(rencana, cfg, tmp):
         raise SystemExit("SFX get out tidak ada di sfx/ - jalankan sinkron-sfx dulu.")
     d = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
                               str(sfx)], capture_output=True, text=True).stdout.strip()) + float(cfg.get("ekor", 0.15))
-    akhir = rencana["potong"][1]
-    sisa = max(0.0, probe(rencana["input"])["durasi"] - akhir - 0.05)
-    lanjut = 0.0 if cfg.get("hitam") else min(d, sisa)
+    KW, KH = kanvas(rencana)
+    banding = rencana.get("format") in FORMAT_BANDING
+    if banding:
+        lanjut = 0.0 if cfg.get("hitam") else d
+    else:
+        akhir = rencana["potong"][1]
+        sisa = max(0.0, probe(rencana["input"])["durasi"] - akhir - 0.05)
+        lanjut = 0.0 if cfg.get("hitam") else min(d, sisa)
     vid = tmp / "getout_v.mp4"
     bk = cfg.get("beku")
     if bk:  # frame beku (detik SUMBER absolut) + punch-zoom ke "box" [x,y,w,h], sinkron dengan get out
         fr = tmp / "getout_beku.png"
-        run(["ffmpeg", "-v", "error", "-y", "-ss", f"{float(bk['detik']):.3f}", "-i", rencana["input"],
+        src_bk = bk.get("input") or rencana.get("input") or rencana.get("sumber", [{}])[-1].get("input")
+        run(["ffmpeg", "-v", "error", "-y", "-ss", f"{float(bk['detik']):.3f}", "-i", src_bk,
              "-frames:v", "1", "-update", "1", fr], quiet=True)
         iw, ih = Image.open(fr).size
         bx, by, bw, bh = bk["box"]
         cx, cy = bx + bw / 2, by + bh / 2
-        sx, sy, sw, sh = rencana.get("stream_box") or [0, 0, iw, ih]
-        h0 = sh; w0 = h0 * W / H                      # awal: irisan 9:16 setinggi stream
-        h1 = max(bh, bw * H / W); w1 = h1 * W / H     # akhir: kotak kerusakan
+        sx, sy, sw, sh = bk.get("stream_box") or rencana.get("stream_box") or [0, 0, iw, ih]
+        h0 = sh; w0 = h0 * KW / KH                    # awal: irisan setinggi stream, rasio kanvas
+        h1 = max(bh, bw * KH / KW); w1 = h1 * KW / KH  # akhir: kotak kerusakan
         tz = float(bk.get("waktu_zoom", 0.3))
         img = Image.open(fr).convert("RGB")
         x0 = min(max(cx - w0 / 2, sx), sx + sw - w0); y0 = sy
@@ -769,11 +836,15 @@ def buat_get_out(rencana, cfg, tmp):
             u = 1 - (1 - min(k / float(FPS) / tz, 1)) ** 3   # ease-out cubic: punch-zoom cepat lalu diam
             cw, ch = w0 + (w1 - w0) * u, h0 + (h1 - h0) * u
             px, py = x0 + (x1 - x0) * u, y0 + (y1 - y0) * u
-            img.crop((int(px), int(py), int(px + cw), int(py + ch))).resize((W, H), Image.LANCZOS).save(
+            img.crop((int(px), int(py), int(px + cw), int(py + ch))).resize((KW, KH), Image.LANCZOS).save(
                 fdir / f"{k:04d}.png")
         vf = "[0:v]unsharp=5:5:0.5,setsar=1,format=yuv420p[v]"
         vin = ["-framerate", FPS, "-i", fdir / "%04d.png"]
         lanjut = 0.0
+    elif lanjut >= 0.1 and banding:
+        ekor_banding(rencana, tmp, lanjut + 0.1, vid)
+        vf = f"[0:v]fps={FPS},tpad=stop_mode=clone:stop_duration={d:.3f},trim=duration={d:.3f},setsar=1,format=yuv420p[v]"
+        vin = ["-i", vid]
     elif lanjut >= 0.1:  # lanjutan rekaman, layout sama, tanpa efek/caption/sfx
         r2 = {k: v for k, v in rencana.items() if k not in (
             "buang", "glitch", "speedlines", "impact", "cam_penuh", "tutup", "zoom", "sfx_tambahan", "hook",
@@ -790,7 +861,7 @@ def buat_get_out(rencana, cfg, tmp):
         vin = ["-i", vid]
     elif not bk:
         vf = f"[0:v]setsar=1,format=yuv420p[v]"
-        vin = ["-f", "lavfi", "-t", f"{d:.3f}", "-i", f"color=black:s={W}x{H}:r={FPS}"]
+        vin = ["-f", "lavfi", "-t", f"{d:.3f}", "-i", f"color=black:s={KW}x{KH}:r={FPS}"]
     out = tmp / "getout.mp4"
     run(["ffmpeg", "-v", "error", "-y", *vin, "-i", sfx, "-filter_complex",
          vf + f";[1:a]aresample=44100,aformat=channel_layouts=stereo,volume={float(cfg.get('volume', 1.0)):.2f},"
@@ -806,9 +877,47 @@ def render(rencana_path, pratinjau=False):
     rencana["_rencana_path"] = str(rencana_path)
     out = Path(rencana.get("output") or Path(rencana_path).with_suffix(".mp4"))
     out.parent.mkdir(parents=True, exist_ok=True)
+    banding = rencana.get("format") in FORMAT_BANDING
+    KW, KH = kanvas(rencana)
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
+        if pratinjau and banding:  # gambar diam di beberapa detik (render potongan 0,2 dtk)
+            titik = rencana.get("pratinjau_detik") or [round(durasi_banding(rencana) * u, 1) for u in (0.1, 0.5, 0.9)]
+            gambar = []
+            for t in titik:
+                v = tmp / f"pv_{t}.mp4"
+                bg = {}
+                if rencana["format"] == "banding":
+                    _render_bersamaan(rencana, tmp, float(t), 0.3, v, audio=False)
+                else:
+                    sisa, bgp = float(t), None
+                    for k, bg in enumerate(rencana["bagian"]):
+                        dd = float(bg.get("durasi", 2.5)) if bg.get("kartu") else bg["potong"][1] - bg["potong"][0]
+                        if sisa < dd or k == len(rencana["bagian"]) - 1:
+                            bgp = (k, bg, sisa)
+                            break
+                        sisa -= dd
+                    k, bg, sisa = bgp
+                    pot = None if bg.get("kartu") else [bg["potong"][0] + sisa, bg["potong"][0] + sisa + 0.3]
+                    _render_bagian(rencana, bg, tmp, k, v, potong=pot, audio=False)
+                p = tmp / f"p_{t}.png"
+                seek = ["-ss", "0.4"] if rencana["format"] == "berurutan" and bg.get("kartu") else []
+                run(["ffmpeg", "-v", "error", "-y", *seek, "-i", v, "-frames:v", "1", p], quiet=True)
+                gambar.append(Image.open(p).convert("RGB").resize((360, int(360 * KH / KW))))
+            lembar = Image.new("RGB", (360 * len(gambar), int(360 * KH / KW)))
+            for i, g in enumerate(gambar):
+                lembar.paste(g, (360 * i, 0))
+            pp = out.with_name(out.stem + "_pratinjau.jpg")
+            lembar.save(pp, quality=90)
+            print("Pratinjau:", pp, "detik", titik)
+            return
         if pratinjau:
+            cf = rencana.get("caption_frasa")  # caption ikut tampil di pratinjau bila sudah ada
+            cpath = Path(cf) if isinstance(cf, str) else Path(rencana_path).with_name(Path(rencana_path).stem + "_caption.json")
+            if isinstance(cf, list):
+                rencana["_caption"] = cf
+            elif cf and cpath.exists():
+                rencana["_caption"] = json.loads(cpath.read_text(encoding="utf-8"))
             info = probe(rencana["input"])
             t0, t1 = rencana.get("potong") or [0, info["durasi"]]
             titik = rencana.get("pratinjau_detik") or [round((t1 - t0) * u, 1) for u in (0.1, 0.5, 0.9)]
@@ -836,7 +945,9 @@ def render(rencana_path, pratinjau=False):
             print(f"  caption: {cpath} ({len(rencana['_caption'])} frasa)")
         elif isinstance(cf, list):
             rencana["_caption"] = cf
-        inputs, f, amap, dur = bangun(rencana, tmp)
+        cek_aman(rencana)
+        if not banding:
+            inputs, f, amap, dur = bangun(rencana, tmp)
         # endcard template program WAJIB di akhir setiap video, utuh tanpa efek/filter
         if "endcard" not in rencana:
             calon = sorted(p for p in ENDCARD_DIR.glob("*") if p.suffix.lower() in (".mp4", ".mov")) if ENDCARD_DIR.exists() else []
@@ -848,13 +959,17 @@ def render(rencana_path, pratinjau=False):
         if rencana.get("hook"):
             bagian.append(buat_hook(rencana, tmp))
         utama = tmp / "utama.mp4"
-        run(["ffmpeg", "-v", "error", "-y", *inputs, "-filter_complex", ";".join(f),
-             "-map", "[vout]", *amap, "-r", FPS, "-c:v", "libx264", "-preset", "medium", "-crf", "17",
-             "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-movflags", "+faststart", utama])
+        if banding:
+            render_banding(rencana, tmp, utama)
+            dur = durasi_banding(rencana)
+        else:
+            run(["ffmpeg", "-v", "error", "-y", *inputs, "-filter_complex", ";".join(f),
+                 "-map", "[vout]", *amap, "-r", FPS, "-c:v", "libx264", "-preset", "medium", "-crf", "17",
+                 "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-movflags", "+faststart", utama])
         bagian.append(utama)
         if rencana.get("musik"):
             isi = tmp / "isi.mp4"
-            sambung(bagian, isi, tmp)
+            sambung(bagian, isi, tmp, (KW, KH))
             isi_m = tmp / "isi_musik.mp4"
             pasang_musik(isi, isi_m, rencana["musik"])
             bagian = [isi_m]
@@ -862,8 +977,8 @@ def render(rencana_path, pratinjau=False):
             bagian.append(buat_get_out(rencana, rencana["get_out"], tmp))
         if rencana.get("endcard"):
             bagian.append(rencana["endcard"])
-        sambung(bagian, out, tmp)
-    # versi siap upload: 1080x1920, bitrate maks 4,5 Mbps (sekitar 20-30 MB) - mudah disimpan di HP
+        sambung(bagian, out, tmp, (KW, KH))
+    # versi siap upload: 1080x1920 (atau 1080x1080 untuk kanvas 1:1), bitrate maks 4,5 Mbps (sekitar 20-30 MB) - mudah disimpan di HP
     up = Path(rencana.get("output_upload") or out.with_name(out.stem + "_upload.mp4"))
     run(["ffmpeg", "-v", "error", "-y", "-i", out, "-c:v", "libx264", "-preset", "slow", "-crf", "21",
          "-maxrate", "4500k", "-bufsize", "9000k", "-profile:v", "high", "-level", "4.1", "-pix_fmt", "yuv420p",
@@ -901,7 +1016,7 @@ def pasang_musik(inp, out, mus):
          "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out])
 
 
-def sambung(bagian, out, tmp):
+def sambung(bagian, out, tmp, ukuran=None):
     """Sambung beberapa video jadi satu. Bagian tidak diubah selain disamakan ukuran/fps/audio
     (endcard tetap utuh tanpa efek)."""
     if len(bagian) == 1:
@@ -914,7 +1029,8 @@ def sambung(bagian, out, tmp):
     extra = len(bagian)
     for i, b in enumerate(bagian):
         bi = probe(b)
-        fc.append(f"[{i}:v]scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:black,"
+        KW, KH = ukuran or (W, H)
+        fc.append(f"[{i}:v]scale={KW}:{KH}:force_original_aspect_ratio=decrease,pad={KW}:{KH}:(ow-iw)/2:(oh-ih)/2:black,"
                   f"fps={FPS},setsar=1,format=yuv420p[v{i}]")
         if bi["audio"]:
             fc.append(f"[{i}:a]aresample=44100,aformat=channel_layouts=stereo[a{i}]")
@@ -1002,7 +1118,7 @@ def buat_caption_frasa(rencana, cpath, maks_kata=4):
         print(f"    {h[0]:6.2f}-{h[1]:6.2f}  {h[2]}")
 
 
-def gambar_caption_frasa(teks, path, size=64, maxw=W - 140):
+def gambar_caption_frasa(teks, path, size=64, maxw=W - 140, warna="white"):
     """Gaya referensi: kapital, condensed tebal (Anton), putih, outline hitam + bayangan."""
     f = font(FONT_JUDUL, size, bold=False)
     baris = bungkus(teks.upper(), f, size, maxw)
@@ -1017,9 +1133,92 @@ def gambar_caption_frasa(teks, path, size=64, maxw=W - 140):
     img.alpha_composite(bay)
     for i, b in enumerate(baris):
         x = (lebar - ukur(b, f, size)) / 2
-        tulis(img, (x, 12 + i * lh), b, f, size, fill="white", stroke=6, stroke_fill="black")
+        tulis(img, (x, 12 + i * lh), b, f, size, fill=warna, stroke=6, stroke_fill="black")
     img.save(path)
     return img.size
+
+
+# ---------------------------------------------------------------- gaya viral (analisis 5 video >100 rb, 21 Nov 2026)
+WARNA = {"putih": (255, 255, 255), "merah": (255, 48, 48), "kuning": (255, 205, 0), "oranye": (255, 140, 0),
+         "hijau": (80, 230, 90), "pink": (255, 70, 170), "hitam": (0, 0, 0)}
+KATA_SAMBUNG = set("""yang dan di ke dari ini itu aja aj sih deh dong kok kan lah nih tuh ya yah gue gua lu lo
+aku kamu kita kami mereka dia ada udah sudah mau bisa jadi buat sama juga lagi gak nggak ga enggak tidak
+apa kenapa gimana kayak kaya terus trus pas saat kalo kalau tapi karena biar the a to and is it you i""".split())
+
+
+def kata_kunci(teks):
+    """Caption 1 kata (gaya akun4): kata terpanjang yang bukan kata sambung."""
+    kata = [k.strip(".,!?\"'") for k in teks.split()]
+    calon = [k for k in kata if k and k.lower() not in KATA_SAMBUNG] or [k for k in kata if k] or [teks]
+    return max(calon, key=len).upper()
+
+
+def gambar_bar_judul(teks, path, lebar=W, gaya="hitam", size=56):
+    """Bar judul statis gaya referensi viral: bar putih selebar layar, teks kapital tebal.
+    gaya "hitam" = teks hitam (akun5/akun1); "outline" = teks putih outline hitam (akun3)."""
+    if gaya == "outline":
+        f = font(FONT_JUDUL, int(size * 1.15), bold=False)
+        size = int(size * 1.15)
+    else:
+        f = font(FONT_TEKS, size, bold=False)
+        for v in ("Black", "ExtraBold", "Bold"):
+            try:
+                f.set_variation_by_name(v)
+                break
+            except Exception:
+                pass
+    baris = bungkus(teks.upper(), f, size, lebar - 70)
+    lh = int(size * 1.18)
+    pad = int(size * 0.42)
+    img = Image.new("RGBA", (lebar, lh * len(baris) + 2 * pad), (255, 255, 255, 255))
+    for i, b in enumerate(baris):
+        x = (lebar - ukur(b, f, size)) / 2
+        if gaya == "outline":
+            tulis(img, (x, pad + i * lh - size * 0.05), b, f, size, fill="white", stroke=6, stroke_fill="black")
+        else:
+            tulis(img, (x, pad + i * lh - size * 0.12), b, f, size, fill=(0, 0, 0))
+    img.save(path)
+    return img.size
+
+
+def gambar_label(teks, path, size=62, warna="white"):
+    """Label nama di panel banding ("MIAWAUG :") / teks stiker reaksi: tebal, outline hitam."""
+    f = font(FONT_TEKS, size, bold=False)
+    for v in ("Black", "ExtraBold", "Bold"):
+        try:
+            f.set_variation_by_name(v)
+            break
+        except Exception:
+            pass
+    lebar = int(ukur(teks, f, size)) + 30
+    img = Image.new("RGBA", (lebar, int(size * 1.45)), (0, 0, 0, 0))
+    tulis(img, (15, size * 0.1), teks, f, size, fill=WARNA.get(warna, warna), stroke=max(4, size // 11),
+          stroke_fill="black")
+    img.save(path)
+    return img.size
+
+
+KATA_EKSPLISIT = ["telanjang", "bugil", "ngentot", "ngewe", "porno", "bokep", "coli", "memek", "kontol", "toket",
+                  "payudara", "sange", "horny", "nude", "naked", "sex", "seks", "nenen", "vagina", "penis"]
+
+
+def cek_aman(rencana):
+    """Peringatan bila teks di layar terlalu eksplisit (konten sus harus sindiran, bukan vulgar)."""
+    teks = []
+    for k in ("judul", "bar_judul", "caption", "judul_sub"):
+        if isinstance(rencana.get(k), str):
+            teks.append(rencana[k])
+    hk = rencana.get("hook") or {}
+    teks += hk.get("teks", [])
+    for sb in rencana.get("sumber", []) + [b for b in rencana.get("bagian", []) if isinstance(b, dict)]:
+        teks += [str(sb.get("label", "")), str(sb.get("kartu", "")), str(sb.get("sub", ""))]
+    teks += [str(s_[2]) for s_ in rencana.get("stiker", []) if isinstance(s_, list) and len(s_) > 2]
+    teks += [c[2] for c in rencana.get("_caption") or []]
+    kena = sorted({k for t in teks for k in KATA_EKSPLISIT if re.search(rf"\b{k}", t.lower())})
+    if kena:
+        print(f"  PERINGATAN: teks di layar terlalu eksplisit ({', '.join(kena)}). Konten sus harus sindiran -"
+              f" TikTok bisa membatasi/menghapus video. Ganti kata-katanya sebelum posting.")
+    return kena
 
 
 # ---------------------------------------------------------------- kartu hook
@@ -1365,6 +1564,306 @@ def thumbnail(rencana_path):
     print("Thumbnail:", out)
 
 
+# ---------------------------------------------------------------- format banding (perbandingan streamer)
+FORMAT_BANDING = ("banding", "berurutan")
+
+
+def kanvas(rencana):
+    """Ukuran kanvas: format banding default 1:1 (seperti video 2,1 jt), selain itu 9:16."""
+    k = rencana.get("kanvas", "1:1" if rencana.get("format") in FORMAT_BANDING else "9:16")
+    return (1080, 1080) if k == "1:1" else (W, H)
+
+
+def _wm_img(rencana, lebar):
+    wm = rencana.get("watermark", str(WATERMARK) if WATERMARK.exists() else None)
+    if not wm:
+        return None, 0, 0
+    wim = Image.open(wm)
+    ww = even(lebar)
+    return wm, ww, even(wim.height * ww / wim.width)
+
+
+def _render_bersamaan(rencana, tmp, offset, durasi, out, audio=True):
+    """Dua rekaman bertumpuk (atas/bawah), adegan sama berjalan bersamaan, label "NAMA :" di kiri atas panel."""
+    KW, KH = kanvas(rencana)
+    A, B = rencana["sumber"][:2]
+    t0a = A["potong"][0] + offset
+    t0b = float(B["mulai"]) + float(B.get("geser", 0)) + offset
+    barh = 0
+    if rencana.get("bar_judul"):
+        _, barh = gambar_bar_judul(rencana["bar_judul"], tmp / "bar.png", KW, rencana.get("bar_gaya", "hitam"),
+                                   int(rencana.get("bar_ukuran", 50 if KH == KW else 56)))
+    wm, ww, wh = _wm_img(rencana, KW * float(rencana.get("watermark_skala", 0.6)))
+    if KH == KW:  # 1:1: bar di atas, dua panel mengisi sisa tinggi; watermark di bawah panel bawah
+        ph = even((KH - barh) / 2)
+        y_bar, y_a = 0, barh
+        y_b = y_a + ph
+        wy = KH - wh - 14
+    else:  # 9:16: blok (bar + watermark + 2 panel 16:9) di tengah
+        ph = even(KW * 9 / 16)
+        blok_h = barh + (wh + 24 if wm else 0) + 2 * ph
+        y_bar = even(max(SAFE_ATAS - 60, (KH - blok_h) / 2))
+        wy = y_bar + barh + 12
+        y_a = y_bar + barh + (wh + 24 if wm else 0)
+        y_b = y_a + ph
+    args = ["-ss", f"{t0a:.3f}", "-t", f"{durasi:.3f}", "-i", A["input"],
+            "-ss", f"{t0b:.3f}", "-t", f"{durasi:.3f}", "-i", B["input"]]
+    n = 2
+    fc = []
+    for i, sb in enumerate((A, B)):
+        info = probe(sb["input"])
+        box = sb.get("stream_box") or [0, 0, info["w"], info["h"]]
+        fc.append(f"[{i}:v]fps={FPS},setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=5[r{i}]")
+        fc.append(cover(f"r{i}", box, KW, ph, f"p{i}"))
+    fc.append(f"color=black:s={KW}x{KH}:r={FPS}:d={durasi:.3f}[bg]")
+    fc.append(f"[bg][p0]overlay=0:{y_a}[c0];[c0][p1]overlay=0:{y_b}:shortest=0[c1]")
+    cur = "c1"
+    for i, sb in enumerate((A, B)):
+        if sb.get("label"):
+            gambar_label(sb["label"], tmp / f"lab{i}.png", int(sb.get("label_ukuran", 58 if KH == KW else 62)))
+            args += ["-loop", "1", "-framerate", str(FPS), "-t", f"{durasi:.3f}", "-i", str(tmp / f"lab{i}.png")]
+            fc.append(f"[{cur}][{n}:v]overlay=14:{(y_a if i == 0 else y_b) + 8}[cl{i}]")
+            cur, n = f"cl{i}", n + 1
+    if barh:
+        args += ["-loop", "1", "-framerate", str(FPS), "-t", f"{durasi:.3f}", "-i", str(tmp / "bar.png")]
+        fc.append(f"[{cur}][{n}:v]overlay=0:{y_bar}[cb]")
+        cur, n = "cb", n + 1
+    if wm:
+        args += ["-loop", "1", "-framerate", str(FPS), "-t", f"{durasi:.3f}", "-i", str(wm)]
+        op = float(rencana.get("watermark_opacity", 0.9))
+        fc.append(f"[{n}:v]format=rgba,scale={ww}:{wh},colorchannelmixer=aa={op:.2f}[wmb];"
+                  f"[{cur}][wmb]overlay=(W-w)/2:{even(rencana.get('watermark_y', wy))}[cw]")
+        cur, n = "cw", n + 1
+    fc.append(f"[{cur}]trim=duration={durasi:.3f},format=yuv420p[vout]")
+    amap = []
+    if audio:
+        mode = rencana.get("audio", "campur")
+        segs = mode if isinstance(mode, list) else [[0, 9999, mode]]
+        for i, sb in enumerate((A, B)):
+            nama = ("atas", "a") if i == 0 else ("bawah", "b")
+            on = [(a - offset, b - offset) for a, b, m in segs if m in nama or m == "campur"]
+            vol = float(sb.get("volume", 1.0))
+            ex = "+".join(f"between(t,{a:.3f},{b:.3f})" for a, b in on) or "0"
+            fc.append(f"[{i}:a]aresample=44100,aformat=channel_layouts=stereo,asetpts=PTS-STARTPTS,"
+                      f"volume='{vol}*min(1,{ex})':eval=frame,apad=whole_dur={durasi:.3f}[au{i}]")
+        fc.append(f"[au0][au1]amix=inputs=2:normalize=0:duration=longest,atrim=0:{durasi:.3f},"
+                  f"loudnorm=I=-14:TP=-1.5:LRA=11,aresample=44100[aout]")
+        amap = ["-map", "[aout]", "-c:a", "aac", "-b:a", "192k"]
+    run(["ffmpeg", "-v", "error", "-y", *args, "-filter_complex", ";".join(fc), "-map", "[vout]", *amap,
+         "-t", f"{durasi:.3f}", "-r", str(FPS), "-c:v", "libx264", "-preset", "medium", "-crf", "17", out])
+    return out
+
+
+def _render_bagian(rencana, bg, tmp, k, out, potong=None, audio=True):
+    """Satu bagian format berurutan: rekaman (16:9 / cover 1:1 di bawah bar judul) atau kartu MEANWHILE."""
+    KW, KH = kanvas(rencana)
+    barh = 0
+    if rencana.get("bar_judul") and not bg.get("kartu"):
+        _, barh = gambar_bar_judul(rencana["bar_judul"], tmp / "bar.png", KW, rencana.get("bar_gaya", "hitam"),
+                                   int(rencana.get("bar_ukuran", 50 if KH == KW else 56)))
+    wm, ww, wh = _wm_img(rencana, KW * float(rencana.get("watermark_skala", 0.6)))
+    if bg.get("kartu"):  # kartu hitam "MEANWHILE / in our universe" (akun1 200 rb)
+        d = float(bg.get("durasi", 2.5))
+        img = Image.new("RGBA", (KW, KH), (0, 0, 0, 255))
+        fj = font(FONT_JUDUL, int(bg.get("ukuran", 150)), bold=False)
+        teks = bg["kartu"].upper()
+        size = int(bg.get("ukuran", 150))
+        while ukur(teks, fj, size) > KW - 100:
+            size -= 6
+            fj = font(FONT_JUDUL, size, bold=False)
+        tulis(img, ((KW - ukur(teks, fj, size)) / 2, KH / 2 - size * 0.75), teks, fj, size)
+        if bg.get("sub"):
+            fs = font(FONT_TEKS, int(size * 0.3))
+            tulis(img, ((KW - ukur(bg["sub"], fs, size * 0.3)) / 2, KH / 2 + size * 0.42), bg["sub"], fs,
+                  size * 0.3)
+        img.save(tmp / f"kartu{k}.png")
+        args = ["-loop", "1", "-framerate", str(FPS), "-t", f"{d:.3f}", "-i", str(tmp / f"kartu{k}.png")]
+        fc = [f"[0:v]format=rgba,fade=in:st=0:d=0.12[c]"]
+        cur, n = "c", 1
+        sfx = sfx_path(bg["sfx"]) if bg.get("sfx") else None
+        if sfx:
+            args += ["-i", str(sfx)]
+            fc.append(f"[1:a]aresample=44100,aformat=channel_layouts=stereo,apad=whole_dur={d:.3f}[aout]")
+            n = 2
+        else:
+            args += ["-f", "lavfi", "-t", f"{d:.3f}", "-i", "anullsrc=r=44100:cl=stereo"]
+            fc.append("[1:a]anull[aout]")
+            n = 2
+        wy = KH - wh - 14 if KH == KW else even(KH / 2 + 260)
+    else:
+        a, b = potong or bg["potong"]
+        d = b - a
+        info = probe(bg["input"])
+        box = bg.get("stream_box") or [0, 0, info["w"], info["h"]]
+        args = ["-ss", f"{a:.3f}", "-t", f"{d:.3f}", "-i", bg["input"]]
+        if KH == KW:  # 1:1: gambar mengisi area di bawah bar (cover, crop tengah / fokus_x)
+            ah, ay = KH - barh, barh
+            bx, by_, bw_, bh_ = box
+            r = KW / ah
+            if bw_ / bh_ > r:
+                nw = bh_ * r
+                fx = float(bg.get("fokus_x", 0.5))
+                box = [bx + (bw_ - nw) * fx, by_, nw, bh_]
+            wy = KH - wh - 14
+        else:  # 9:16: gambar 16:9 utuh di tengah, bar tepat di atasnya, watermark di bawahnya
+            ah = even(KW * box[3] / box[2])
+            ay = even((KH - ah) / 2)
+            wy = ay + ah + 24
+        fc = [f"[0:v]fps={FPS},setpts=PTS-STARTPTS[r]", cover("r", box, KW, ah, "p"),
+              f"color=black:s={KW}x{KH}:r={FPS}:d={d:.3f}[bg]", f"[bg][p]overlay=0:{ay}[c]"]
+        cur, n = "c", 1
+        if barh:
+            args += ["-loop", "1", "-framerate", str(FPS), "-t", f"{d:.3f}", "-i", str(tmp / "bar.png")]
+            fc.append(f"[{cur}][{n}:v]overlay=0:{max(0, ay - barh) if KH != KW else 0}[cb]")
+            cur, n = "cb", n + 1
+        if bg.get("label"):
+            gambar_label(bg["label"], tmp / f"lab{k}.png", int(bg.get("label_ukuran", 58)))
+            args += ["-loop", "1", "-framerate", str(FPS), "-t", f"{d:.3f}", "-i", str(tmp / f"lab{k}.png")]
+            fc.append(f"[{cur}][{n}:v]overlay=14:{ay + 8}[cl]")
+            cur, n = "cl", n + 1
+        if audio and info["audio"]:
+            fc.append(f"[0:a]aresample=44100,aformat=channel_layouts=stereo,asetpts=PTS-STARTPTS,"
+                      f"volume={float(bg.get('volume', 1.0))},apad=whole_dur={d:.3f}[aout]")
+        else:
+            args += ["-f", "lavfi", "-t", f"{d:.3f}", "-i", "anullsrc=r=44100:cl=stereo"]
+            fc.append(f"[{n}:a]anull[aout]")
+            n += 1
+    if wm:
+        args += ["-loop", "1", "-framerate", str(FPS), "-t", f"{d:.3f}", "-i", str(wm)]
+        op = float(rencana.get("watermark_opacity", 0.9))
+        fc.append(f"[{n}:v]format=rgba,scale={ww}:{wh},colorchannelmixer=aa={op:.2f}[wmb];"
+                  f"[{cur}][wmb]overlay=(W-w)/2:{even(rencana.get('watermark_y', wy))}[cw]")
+        cur = "cw"
+    fc.append(f"[{cur}]trim=duration={d:.3f},format=yuv420p[vout]")
+    run(["ffmpeg", "-v", "error", "-y", *args, "-filter_complex", ";".join(fc), "-map", "[vout]", "-map", "[aout]",
+         "-t", f"{d:.3f}", "-r", str(FPS), "-c:v", "libx264", "-preset", "medium", "-crf", "17",
+         "-c:a", "aac", "-b:a", "192k", "-ar", "44100", out])
+    return out
+
+
+def durasi_banding(rencana):
+    if rencana["format"] == "banding":
+        a, b = rencana["sumber"][0]["potong"]
+        return b - a
+    return sum(float(bg.get("durasi", 2.5)) if bg.get("kartu") else bg["potong"][1] - bg["potong"][0]
+               for bg in rencana["bagian"])
+
+
+def render_banding(rencana, tmp, out):
+    """Klip utama format banding/berurutan (tanpa endcard), audio -14 LUFS."""
+    KW, KH = kanvas(rencana)
+    if rencana["format"] == "banding":
+        return _render_bersamaan(rencana, tmp, 0.0, durasi_banding(rencana), out)
+    bag = [_render_bagian(rencana, bg, tmp, k, tmp / f"bag{k}.mp4") for k, bg in enumerate(rencana["bagian"])]
+    gab = tmp / "bagian_gabung.mp4"
+    sambung(bag, gab, tmp, (KW, KH))
+    run(["ffmpeg", "-v", "error", "-y", "-i", gab, "-af", "loudnorm=I=-14:TP=-1.5:LRA=11,aresample=44100",
+         "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", out])
+    return out
+
+
+def ekor_banding(rencana, tmp, d, out):
+    """Lanjutan video (tanpa suara) setelah titik potong, untuk ending get out format banding."""
+    if rencana["format"] == "banding":
+        return _render_bersamaan(rencana, tmp, durasi_banding(rencana), d, out, audio=False)
+    akhir = [bg for bg in rencana["bagian"] if not bg.get("kartu")][-1]
+    b = akhir["potong"][1]
+    return _render_bagian(rencana, akhir, tmp, 99, out, potong=[b, b + d], audio=False)
+
+
+def amplop(path, t0, dur, sr=8000):
+    """Amplop onset (perubahan energi positif, 100 Hz) untuk sinkron dua rekaman lewat suara game."""
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{max(0, t0):.3f}", "-t", f"{dur:.3f}", "-i", str(path),
+                          "-ac", "1", "-ar", str(sr), "-af", "highpass=f=200", "-f", "f32le", "-"],
+                         capture_output=True).stdout
+    a = np.frombuffer(raw, dtype=np.float32)
+    hop = sr // 100
+    n = len(a) // hop
+    e = np.log1p(1000 * np.sqrt((a[:n * hop].reshape(n, hop) ** 2).mean(1)))
+    on = np.maximum(0, np.diff(e, prepend=e[:1]))
+    return (on - on.mean()) / (on.std() + 1e-9)
+
+
+def sinkron(rencana_path, cari=30.0):
+    """Cari detik mulai rekaman B (streamer lain) yang paling cocok dengan potongan A lewat korelasi suara game.
+    Perkiraan awal: sumber[1]["mulai"] (dari AI pencari momen / Prompt B). Hasil ditulis ke rencana."""
+    r = json.loads(Path(rencana_path).read_text(encoding="utf-8"))
+    A, B = r["sumber"][:2]
+    a0, a1 = A["potong"]
+    dur = min(a1 - a0, 40.0)
+    kira = float(B.get("mulai", a0))
+    ea = amplop(A["input"], a0, dur)
+    mulai_cari = max(0.0, kira - cari)
+    eb = amplop(B["input"], mulai_cari, dur + 2 * cari)
+    if len(eb) <= len(ea):
+        raise SystemExit("Rekaman B terlalu pendek untuk dicari.")
+    c = np.correlate(eb, ea, mode="valid") / len(ea)
+    i = int(np.argmax(c))
+    z = (c[i] - c.mean()) / (c.std() + 1e-9)
+    hasil = round(mulai_cari + i / 100.0, 2)
+    B["mulai"], B["geser"] = hasil, 0
+    r["_sinkron"] = {"skor_z": round(float(z), 1), "keyakinan": "tinggi" if z > 6 else "sedang" if z > 4 else "rendah"}
+    Path(rencana_path).write_text(json.dumps(r, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"Sinkron: B mulai di {hasil:.2f} dtk (z={z:.1f}, keyakinan {r['_sinkron']['keyakinan']}).")
+    if z <= 4:
+        print("  Keyakinan rendah: cek pratinjau, atur manual dengan \"geser\" (detik, + = B lebih lambat).")
+
+
+# ---------------------------------------------------------------- pencari momen sus
+KATA_SUS = ["bikini", "pipa", "basah", "masuk", "keras", "belakang", "pegang", "goyang", "joget", "seksi", "sexy",
+            "cewek", "cewe", "tante", "mbak", "kamar", "ranjang", "kasur", "mandi", "baju", "celana", "dada", "paha",
+            "pantat", "bokong", "cium", "peluk", "pacar", "mommy", "daddy", "club", "klub", "strip", "nari",
+            "astaghfirullah", "astagfirullah", "istighfar", "sensor", "tutup mata", "jangan liat", "anak kecil",
+            "dosa", "puasa", "halal", "nakal", "genit", "godain", "naik", "buka", "lubang", "panas"]
+KATA_REAKSI = ["anjir", "duh", "wah", "anjing", "astaga", "gila", "woi", "loh", "waduh", "aduh", "ih", "hah", "buset", "bjir"]
+
+
+def cari_sus(video, out_json=None):
+    """Pindai ucapan (Whisper, waktu per kata) untuk momen sus/sindiran 18+. Hasil: kandidat rentang potong."""
+    from faster_whisper import WhisperModel
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(video), "-ac", "1", "-ar", "16000", "-f", "f32le", "-"],
+                         capture_output=True).stdout
+    a = np.frombuffer(raw, dtype=np.float32).copy()
+    m = WhisperModel("small", device="cpu", compute_type="int8")
+    segs, _ = m.transcribe(a, language="id", word_timestamps=True, vad_filter=True,
+                           vad_parameters=dict(threshold=0.25, min_silence_duration_ms=300),
+                           condition_on_previous_text=False)
+    kata = [(w.start, w.end, w.word.strip().lower().strip(".,!?")) for sg in segs for w in sg.words]
+    teks = " ".join(k for _, _, k in kata)
+    hit = []
+    for i, (t, _, k) in enumerate(kata):
+        dua = k + " " + (kata[i + 1][2] if i + 1 < len(kata) else "")
+        sus = [w for w in KATA_SUS if (w in dua if " " in w else k.startswith(w))]
+        if sus:
+            dekat = [kk for tt, _, kk in kata if t - 3 <= tt <= t + 6 and kk in KATA_REAKSI]
+            hit.append({"detik": round(t, 1), "kata": sus, "reaksi": sorted(set(dekat)),
+                        "kutipan": " ".join(kk for tt, _, kk in kata if t - 4 <= tt <= t + 6)})
+    # gabung yang berdekatan jadi kandidat
+    kand = []
+    for h in hit:
+        if kand and h["detik"] - kand[-1]["akhir"] < 12:
+            kand[-1]["akhir"] = h["detik"]
+            kand[-1]["kata"] = sorted(set(kand[-1]["kata"] + h["kata"]))
+            kand[-1]["reaksi"] = sorted(set(kand[-1]["reaksi"] + h["reaksi"]))
+            kand[-1]["kutipan"] += " / " + h["kutipan"]
+        else:
+            kand.append({"mulai": h["detik"], "akhir": h["detik"], **{k: h[k] for k in ("kata", "reaksi", "kutipan")}})
+    for c in kand:
+        c["skor"] = len(c["kata"]) * 2 + len(c["reaksi"])
+        c["usul_potong"] = [round(max(0, c["mulai"] - 15), 1), round(c["akhir"] + 12, 1)]
+        c["eksplisit"] = [k for k in KATA_EKSPLISIT if k in c["kutipan"]]
+    kand.sort(key=lambda c: -c["skor"])
+    out_json = Path(out_json or Path(video).with_suffix("").as_posix() + "_sus.json")
+    out_json.write_text(json.dumps({"video": str(video), "kandidat": kand, "transkrip": teks}, indent=1,
+                                   ensure_ascii=False), encoding="utf-8")
+    print(f"{len(kand)} kandidat sus -> {out_json}")
+    for c in kand[:8]:
+        print(f"  {c['mulai']:7.1f}-{c['akhir']:7.1f} skor {c['skor']:2d} {c['kata']} reaksi {c['reaksi']}"
+              + (f"  EKSPLISIT {c['eksplisit']}" if c["eksplisit"] else ""))
+        print(f"      \"{c['kutipan'][:160]}\"")
+    return kand
+
+
 def main():
     ap = argparse.ArgumentParser(prog="klip-windah")
     sp = ap.add_subparsers(dest="cmd", required=True)
@@ -1383,7 +1882,16 @@ def main():
     c.add_argument("rencana")
     t = sp.add_parser("thumbnail")
     t.add_argument("rencana")
+    sk = sp.add_parser("sinkron")
+    sk.add_argument("rencana")
+    sk.add_argument("--cari", type=float, default=30.0)
+    cs = sp.add_parser("cari-sus")
+    cs.add_argument("video")
     args = ap.parse_args()
+    if args.cmd == "sinkron":
+        return sinkron(args.rencana, args.cari)
+    if args.cmd == "cari-sus":
+        return cari_sus(args.video)
     if args.cmd == "hook":  # pratinjau kartu hook saja (gambar di detik 1,3)
         r = json.loads(Path(args.rencana).read_text(encoding="utf-8"))
         with tempfile.TemporaryDirectory() as td:

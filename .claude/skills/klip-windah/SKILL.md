@@ -1,6 +1,6 @@
 ---
 name: klip-windah
-description: Editor klip streaming Windah Basudara main GTA VI. Pengguna mengirim rekaman layar potongan stream, Claude menganalisis, bertanya seperlunya (posisi cam, format, momen), lalu merender editan siap posting - format TikTok 9:16 (split gameplay + cam besar, kotak judul hook ungu-pink, glitch, speed lines anime, impact, SFX) atau format kotak (frame stream utuh dengan cam asli di tengah latar hitam, caption punchline statis, punch-in ke wajah). Tanpa voice-over - murni momen. Pakai setiap kali pengguna mengirim rekaman/klip Windah atau GTA VI dan minta diedit, "bikin editan", "edit klip ini", "jadikan tiktok", "bikin versi 1:1/kotak".
+description: Editor klip streaming Windah Basudara main GTA VI. Pengguna mengirim rekaman layar potongan stream, Claude menganalisis, bertanya seperlunya (posisi cam, format, momen), lalu merender editan siap posting - format TikTok 9:16 (split gameplay + cam besar, kotak judul hook ungu-pink, glitch, speed lines anime, impact, SFX) atau format kotak (frame stream utuh dengan cam asli di tengah latar hitam, caption punchline statis, punch-in ke wajah), plus gaya viral: format banding (Windah vs streamer lain, atas-bawah bersamaan atau berurutan dengan kartu MEANWHILE), bar judul statis, stiker reaksi, caption 1 kata, pencari momen sus. Tanpa voice-over - murni momen. Pakai setiap kali pengguna mengirim rekaman/klip Windah atau GTA VI dan minta diedit, "bikin editan", "edit klip ini", "jadikan tiktok", "bikin versi 1:1/kotak", "bikin perbandingan/perbedaan Windah vs streamer lain", "cari momen sus".
 ---
 
 # klip-windah
@@ -13,6 +13,8 @@ bash SKILL/scripts/klip-windah pratinjau RENCANA.json       # gambar diam bebera
 bash SKILL/scripts/klip-windah render RENCANA.json          # MP4 1080x1920, 30 fps, -14 LUFS
 bash SKILL/scripts/klip-windah thumbnail RENCANA.json       # cover 9:16 (bagian "thumbnail" di rencana)
 bash SKILL/scripts/klip-windah sfx                          # buat ulang SFX bawaan
+bash SKILL/scripts/klip-windah sinkron RENCANA.json         # format banding: cari detik mulai rekaman streamer lain (suara game)
+bash SKILL/scripts/klip-windah cari-sus VIDEO               # kandidat momen sus/sindiran 18+ dari ucapan (-> VIDEO_sus.json)
 ```
 Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkrip memakai Whisper `small`
 (sekitar 480 MB, diunduh dari huggingface.co saat pertama dipakai).
@@ -173,12 +175,43 @@ pertama, kalimat hook bercerita kontras, caption di setiap ucapan, transisi flas
   - Kotak: tepat di atas gambar, di latar hitam (judul, bila ada, pindah ke bawah gambar).
   - `"watermark_y"` (titik tengah) untuk memindah, `"watermark": null` untuk mematikan.
 - **Emoji** di judul/teks didukung (font Noto Color Emoji sistem; di Windows Segoe UI Emoji).
-- **Tanpa voice-over, murni momen.** Suara stream asli dipertahankan, dinormalisasi ke -14 LUFS.
+- **Tanpa voice-over, murni momen** (analisis video viral 21 Nov 2026 juga: tanpa VO). Suara stream asli dipertahankan, dinormalisasi ke -14 LUFS.
 - Watermark sponsor lain dari referensi (mis. Dunia Games) **tidak** ditiru.
 - SFX bawaan dibuat sintetis (`sfx/bawaan/`). Bila pengguna mengirim SFX sendiri, simpan sebagai
   `sfx/whoosh.wav`, `sfx/boom.wav`, `sfx/glitch.wav`, `sfx/riser.wav`, `sfx/klik.wav` (mp3/m4a/ogg juga bisa) -
   otomatis dipakai menggantikan bawaan. SFX bebas: `"sfx_tambahan": [["riser", 12.0, 0.8]]` (nama, detik, volume).
   `"volume_sfx"` mengalikan semua SFX; `"tanpa_sfx": true` mematikannya.
+
+## Gaya viral (analisis 5 video >100 rb views, 21 Nov 2026) - dipakai bila pengguna memintanya secara spesifik
+Temuan: KONSEP > efek. Tanpa VO, tanpa kartu hook animasi; bar judul statis yang menjanjikan konflik; 35-60 dtk;
+momen SPESIFIK yang kontras (topik umum "TOP 5", "ADA LAGU INDO" flop). Pola: perbandingan dengan streamer lain
+(video 2,1 jt = banding + sus), sus 18+ sindiran, ironi/sarkas, drama/curhat. Prompt AI pencari momen v2:
+`prompt/pencari-momen.md` (Prompt A kandidat, Prompt B adegan sama di VOD streamer lain).
+- **Banding bersamaan** (`"format": "banding"`, gaya video 2,1 jt): dua rekaman atas-bawah, adegan sama berjalan
+  bersamaan, label "NAMA :" kiri atas tiap panel. `"kanvas": "1:1"` (bawaan, 1080x1080) atau `"9:16"`.
+  `sumber[0]` = panel atas (streamer lain), `sumber[1]` = bawah (Windah) - urutan referensi. `sumber[0].potong`
+  menentukan durasi; `sumber[1].mulai` = detik mulai B (jalankan `sinkron` - korelasi suara game, tulis hasil +
+  keyakinan ke rencana; `"geser"` untuk koreksi manual). `"audio"`: `"campur"` (bawaan) / `"atas"` / `"bawah"` /
+  `[[mulai, selesai, "atas"|"bawah"|"campur"], ...]` (gantian, mis. suara lawan dulu lalu Windah); `volume` per sumber.
+- **Banding berurutan** (`"format": "berurutan"`, gaya "YOUTUBER LAIN KETIKA LANDING"): `bagian` = daftar
+  `{"input", "potong", "stream_box", "label"?, "fokus_x"?}` atau kartu `{"kartu": "MEANWHILE", "sub": "in our universe",
+  "durasi": 2.5, "sfx": "nama"?}` (latar hitam; bar judul disembunyikan). Streamer lain ±3 dtk/orang -> MEANWHILE ->
+  Windah -> punchline (WASTED/get out).
+- **Rekaman streamer lain BUKAN bagian program clipper Windah**: sebelum dipakai, pastikan pengguna sudah cek aturan
+  motion klip/izinnya; ingatkan setiap kali membuat banding.
+- **Bar judul** (`"bar_judul": "TEKS"`, semua format): bar putih selebar layar sepanjang video, pengganti kartu hook.
+  `"bar_gaya": "hitam"` (teks hitam tebal, bawaan) / `"outline"` (putih outline hitam); `bar_ukuran`, `bar_y`.
+  Kotak: bar tepat di atas gambar, watermark pindah ke bawah gambar. Gaya polos = `kotak` + `"rasio_kotak": null` +
+  `bar_judul`, tanpa hook/speedlines/impact/musik.
+- **Stiker reaksi** (gaya "melongo"): `"stiker": [[mulai, selesai, "melongo"], ...]` atau objek
+  `{"mulai", "selesai", "teks", "lebar": 0.5, "x": 0.5, "y": 0-1?, "zoom": 1.35, "fokus_y": 0.42, "ukuran": 64}` -
+  wajah Windah dari `cam_box` diperbesar berbingkai putih + teks reaksi. Butuh `cam_box`.
+- **Caption 1 kata** (gaya akun4): `"caption_mode": "kata"` - tiap frasa caption tampil sebagai 1 kata kunci
+  berwarna bergantian (`"caption_warna": ["kuning", "putih", "hijau"]`). Koreksi kata kasar di file caption.
+- **Momen sus**: `cari-sus VIDEO` memindai ucapan (kata sus + reaksi Windah) -> kandidat + `usul_potong`. Harus
+  SINDIRAN, bukan eksplisit: render memberi PERINGATAN bila judul/bar/label/caption memuat kata eksplisit
+  (`KATA_EKSPLISIT`) - ganti sebelum posting. Ending yang cocok: `get_out`.
+- `get_out` di format banding: video mengalir (lanjutan kedua panel/bagian terakhir) atau `"hitam": true`.
 
 ## Skema rencana
 Semua kotak dalam **piksel video sumber** `[x, y, lebar, tinggi]`; semua detik **relatif terhadap awal `potong`**.
