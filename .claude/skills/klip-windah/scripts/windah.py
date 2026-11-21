@@ -747,7 +747,34 @@ def buat_get_out(rencana, cfg, tmp):
     sisa = max(0.0, probe(rencana["input"])["durasi"] - akhir - 0.05)
     lanjut = 0.0 if cfg.get("hitam") else min(d, sisa)
     vid = tmp / "getout_v.mp4"
-    if lanjut >= 0.1:  # lanjutan rekaman, layout sama, tanpa efek/caption/sfx
+    bk = cfg.get("beku")
+    if bk:  # frame beku (detik SUMBER absolut) + punch-zoom ke "box" [x,y,w,h], sinkron dengan get out
+        fr = tmp / "getout_beku.png"
+        run(["ffmpeg", "-v", "error", "-y", "-ss", f"{float(bk['detik']):.3f}", "-i", rencana["input"],
+             "-frames:v", "1", "-update", "1", fr], quiet=True)
+        iw, ih = Image.open(fr).size
+        bx, by, bw, bh = bk["box"]
+        cx, cy = bx + bw / 2, by + bh / 2
+        sx, sy, sw, sh = rencana.get("stream_box") or [0, 0, iw, ih]
+        h0 = sh; w0 = h0 * W / H                      # awal: irisan 9:16 setinggi stream
+        h1 = max(bh, bw * H / W); w1 = h1 * W / H     # akhir: kotak kerusakan
+        tz = float(bk.get("waktu_zoom", 0.3))
+        img = Image.open(fr).convert("RGB")
+        x0 = min(max(cx - w0 / 2, sx), sx + sw - w0); y0 = sy
+        x1 = min(max(cx - w1 / 2, sx), sx + sw - w1); y1 = min(max(cy - h1 / 2, sy), sy + sh - h1)
+        fdir = tmp / "getout_fr"
+        fdir.mkdir(exist_ok=True)
+        n = int(round(d * float(FPS)))
+        for k in range(n):
+            u = 1 - (1 - min(k / float(FPS) / tz, 1)) ** 3   # ease-out cubic: punch-zoom cepat lalu diam
+            cw, ch = w0 + (w1 - w0) * u, h0 + (h1 - h0) * u
+            px, py = x0 + (x1 - x0) * u, y0 + (y1 - y0) * u
+            img.crop((int(px), int(py), int(px + cw), int(py + ch))).resize((W, H), Image.LANCZOS).save(
+                fdir / f"{k:04d}.png")
+        vf = "[0:v]unsharp=5:5:0.5,setsar=1,format=yuv420p[v]"
+        vin = ["-framerate", FPS, "-i", fdir / "%04d.png"]
+        lanjut = 0.0
+    elif lanjut >= 0.1:  # lanjutan rekaman, layout sama, tanpa efek/caption/sfx
         r2 = {k: v for k, v in rencana.items() if k not in (
             "buang", "glitch", "speedlines", "impact", "cam_penuh", "tutup", "zoom", "sfx_tambahan", "hook",
             "flash_awal", "judul", "caption", "caption_frasa", "_caption", "cam_hd", "get_out")}
@@ -761,7 +788,7 @@ def buat_get_out(rencana, cfg, tmp):
             quiet=True)
         vf = f"[0:v]fps={FPS},tpad=stop_mode=add:stop_duration={d:.3f}:color=black,trim=duration={d:.3f},setsar=1,format=yuv420p[v]"
         vin = ["-i", vid]
-    else:
+    elif not bk:
         vf = f"[0:v]setsar=1,format=yuv420p[v]"
         vin = ["-f", "lavfi", "-t", f"{d:.3f}", "-i", f"color=black:s={W}x{H}:r={FPS}"]
     out = tmp / "getout.mp4"
@@ -770,7 +797,7 @@ def buat_get_out(rencana, cfg, tmp):
          f"apad=whole_dur={d:.3f}[a]",
          "-map", "[v]", "-map", "[a]", "-t", f"{d:.3f}", "-r", FPS, "-c:v", "libx264", "-preset", "medium",
          "-crf", "17", "-c:a", "aac", "-b:a", "192k", "-ar", "44100", out], quiet=True)
-    print(f"  get out: {d:.2f} dtk (video mengalir {lanjut:.2f} dtk, {Path(sfx).name})")
+    print(f"  get out: {d:.2f} dtk ({'frame beku + zoom' if bk else f'video mengalir {lanjut:.2f} dtk'}, {Path(sfx).name})")
     return out
 
 

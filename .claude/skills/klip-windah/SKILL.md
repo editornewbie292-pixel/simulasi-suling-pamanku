@@ -118,7 +118,9 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
     "LET'S GO"). Maksimal 1-2 per klip.
   - `get_out`: `true` / `{"sfx": "getout", "volume": 1.0}` - ending meme: akhiri `potong` TEPAT setelah momen
     sus/lucu/sarkas; suara asli + musik langsung dipotong, SFX get out diputar utuh sementara VIDEO TETAP
-    MENGALIR (lanjutan rekaman tanpa efek; jangan freeze - pengguna tidak mau; `"hitam": true` = layar hitam), lalu endcard. Pakai untuk klip yang berakhir dengan punchline (permintaan pengguna).
+    MENGALIR (lanjutan rekaman tanpa efek; jangan freeze - pengguna tidak mau; `"hitam": true` = layar hitam), lalu endcard. Variasi `"beku": {"detik": <detik SUMBER absolut>,
+    "box": [x,y,w,h], "waktu_zoom": 0.3}`: frame beku + punch-zoom ke kotak (mis. kerusakan depan mobil paling
+    parah) sinkron dengan get out - dipakai bila pengguna minta "frame beku lalu zoom". Pakai untuk klip yang berakhir dengan punchline (permintaan pengguna).
   - `cam_penuh` `[[mulai, selesai]]`: potong ke wajah layar penuh untuk reaksi besar (opsional di TikTok).
 
 ### Kartu hook + caption per frasa (standar "editan bagus" dari referensi pengguna)
