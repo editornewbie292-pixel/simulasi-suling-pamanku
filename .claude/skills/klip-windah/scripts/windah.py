@@ -721,6 +721,9 @@ def bangun(rencana, tmp, pratinjau=None):
     if not stiker and "stiker" in rencana and not rencana.get("cam_box"):
         print("  PERINGATAN: stiker butuh cam_box - dilewati.")
 
+    if rencana.get("popup"):
+        cur = overlay_popup(rencana["popup"], tmp, tambah, cur, f, W, H)
+
     # bar judul statis (gaya viral: bar putih di atas gambar sepanjang video, pengganti kartu hook)
     if rencana.get("bar_judul"):
         bw2, bh2 = gambar_bar_judul(rencana["bar_judul"], tmp / "bar.png", W, rencana.get("bar_gaya", "hitam"),
@@ -1237,8 +1240,13 @@ def buat_elemen(src, t, el):
     """Elemen pendukung kartu hook (mis. Bigfoot, pesawat): 'cutout' (latar dihapus, bingkai putih)
     atau 'kartu' (foto berbingkai putih, sedikit miring). Hasil RGBA dengan bayangan."""
     from PIL import ImageFilter
-    fr = ambil_frame_sumber(src, t)
-    x, y, w, h = el["box"]
+    if el.get("gambar"):  # file gambar dari pengguna (mis. foto streamer lain), bukan frame video
+        gp = Path(el["gambar"])
+        fr = Image.open(gp if gp.exists() else SKILL / gp).convert("RGB")
+        x, y, w, h = el.get("box") or [0, 0, fr.width, fr.height]
+    else:
+        fr = ambil_frame_sumber(src, t)
+        x, y, w, h = el["box"]
     im = fr.crop((x, y, x + w, y + h))
     lebar = int(el.get("lebar", 560))
     if el.get("gaya", "cutout") == "cutout":
@@ -1282,6 +1290,25 @@ def buat_elemen(src, t, el):
     if sudut:
         lap = lap.rotate(sudut, resample=Image.BICUBIC, expand=True)
     return lap
+
+
+
+def overlay_popup(popup, tmp, tambah, cur, f, kw, kh, awal="pp"):
+    """Gambar pop-up di atas video (mis. foto Reza Arap saat namanya disebut): cutout/kartu berbingkai putih,
+    muncul dengan fade cepat. popup: [{"gambar", "mulai", "selesai", "gaya": "cutout"|"kartu",
+    "model": "u2net_human_seg", "lebar": px, "x": 0-1, "y": 0-1 (titik tengah), "miring": derajat}]."""
+    for k, el in enumerate(popup):
+        img = buat_elemen(None, 0, {"gaya": "kartu", "model": "u2net_human_seg", **el})
+        pth = tmp / f"{awal}{k}.png"
+        img.save(pth)
+        a, b = float(el["mulai"]), float(el["selesai"])
+        px = even(kw * float(el.get("x", 0.75)) - img.width / 2)
+        py = even(kh * float(el.get("y", 0.45)) - img.height / 2)
+        i = tambah("-loop", "1", "-framerate", str(FPS), "-t", f"{b + 0.5:.3f}", "-i", pth)
+        f.append(f"[{i}:v]format=rgba,fade=in:st={a:.3f}:d=0.12:alpha=1,fade=out:st={max(a, b - 0.15):.3f}:d=0.15:alpha=1[{awal}i{k}]")
+        f.append(f"[{cur}][{awal}i{k}]overlay={px}:{py}:eof_action=pass:enable='between(t,{a:.3f},{b:.3f})'[{awal}o{k}]")
+        cur = f"{awal}o{k}"
+    return cur
 
 
 def ambil_frame_sumber(src, t):
@@ -1721,6 +1748,15 @@ def _render_bagian(rencana, bg, tmp, k, out, potong=None, audio=True):
             args += ["-loop", "1", "-framerate", str(FPS), "-t", f"{d:.3f}", "-i", str(tmp / f"lab{k}.png")]
             fc.append(f"[{cur}][{n}:v]overlay=14:{ay + 8}[cl]")
             cur, n = "cl", n + 1
+        if bg.get("popup") and potong is None:
+            nn = [n]
+
+            def tambah_(*xs):
+                args.extend(map(str, xs))
+                nn[0] += 1
+                return nn[0] - 1
+            cur = overlay_popup(bg["popup"], tmp, tambah_, cur, fc, KW, KH, awal=f"pb{k}_")
+            n = nn[0]
         if audio and info["audio"]:
             fc.append(f"[0:a]aresample=44100,aformat=channel_layouts=stereo,asetpts=PTS-STARTPTS,"
                       f"volume={float(bg.get('volume', 1.0))},apad=whole_dur={d:.3f}[aout]")
