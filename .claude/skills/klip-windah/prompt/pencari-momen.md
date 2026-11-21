@@ -6,10 +6,16 @@ TIDAK bisa memberi screenshot/MP4, optimal 1 link per giliran dan dipindai per s
 
 Pembagian kerja: AI pengguna mencari kandidat (JSON) -> pengguna merekam layar dengan buffer -20/+40 detik ->
 Claude mencari momen presisi dari rekaman (puncak suara, beda frame/WASTED, Whisper) -> edit.
-Saat menerima JSON: pilih 2-3 kandidat terkuat (kategori ekspektasi_realita/panik paling kuat untuk klip momen),
-abaikan yang keyakinan_timestamp "rendah" kecuali skornya tinggi, dan minta pengguna merekam per id klip.
+Saat menerima JSON: pilih 2-3 kandidat terkuat. Prioritas (dari analisis 5 video >100 rb views, 21 Nov 2026):
+banding (adegan sama dengan streamer lain) > sus (sindiran 18+, bukan eksplisit) > ironi/drama > ekspektasi_realita.
+Abaikan yang keyakinan_timestamp "rendah" kecuali skornya tinggi, dan minta pengguna merekam per id klip.
+Kandidat "banding" butuh rekaman streamer lain di adegan yang sama -> pakai Prompt B.
 
-## Prompt
+Pola viral (21 Nov 2026): konsep > efek. Bar judul statis yang menjanjikan konflik ("PERBEDAAN X & WINDAH PAS ...",
+"STREAMER LAIN KETIKA ...", "WINDAH TRAGEDI ..."), tanpa VO dan tanpa kartu hook animasi, 35-60 dtk, ending
+punchline. Topik umum ("TOP 5 ...", "ADA LAGU INDO") flop - yang meledak selalu momen SPESIFIK yang kontras.
+
+## Prompt A - cari kandidat dari 1 VOD Windah
 
 ```
 Kamu pencari kandidat momen untuk program clipper resmi Windah Basudara GTA VI.
@@ -17,20 +23,33 @@ Saya kirim 1 link VOD. Pindai TRANSKRIP per segmen 3 jam (00:00–03:00, 03:00�
 dst.) supaya tidak ada bagian yang terlewat. Laporkan segmen mana yang sudah
 dipindai dan mana yang belum.
 
-CARI MOMEN dari pola transkrip berikut (prioritas dari atas):
-1. EKSPEKTASI VS REALITA: Windah sesumbar ("gampang", "perfect", "liat nih", "pro",
-   "santai", "aman") lalu dalam 5–60 detik ada tanda gagal ("WASTED", "mati",
-   "anjir", "loh loh", "kok", tawa panjang).
-2. PANIK/TERIAK: kata seru berulang ("woi woi", "lari lari", "anjir anjir",
-   "astaga"), kalimat terputus, umpatan kaget.
-3. PERTAMA/REKOR: "pertama", "orang pertama", "di Indonesia", "rekor", "dunia".
-4. TAKJUB DETAIL GTA 6: "gila", "detail banget", "realistis", "liat ini guys",
-   "13 tahun".
-5. LUCU/ABSURD: tawa panjang, "kocak", "bug", "NPC", "terbang", "kok gini".
-6. EMOSIONAL: terharu, berterima kasih, bangga, soal Rockstar atau penonton.
+Klip yang meledak (>100 rb views) BUKAN yang efeknya ramai, tapi yang KONSEPNYA
+langsung kebaca dari satu judul. Topik umum (top 5, kompilasi, "ada lagu indo")
+SELALU flop. Cari MOMEN SPESIFIK dengan pola berikut (prioritas dari atas):
 
-SYARAT: hanya stream GTA VI channel resmi Windah Basudara; abaikan menu, loading,
-dan iklan; momen 15–60 detik dari pemicu sampai punchline.
+1. BANDING – adegan yang PASTI dialami streamer lain juga, tapi versi Windah beda/
+   kacau/ironis: misi cerita & cutscene (sebut nama misinya), tutorial pertama
+   (terbang/landing, menyetir pertama, benerin sesuatu, mancing), momen awal/akhir
+   stream (buka stream, end stream, jumlah viewer), bos/kejar-kejaran ikonik.
+   Pemicu transkrip: Windah gagal di bagian yang "harusnya gampang", "kok gue beda",
+   "yang lain gimana", menyebut streamer lain, atau adegan yang jelas dari misi utama.
+2. SUS 18+ (SINDIRAN, BUKAN EKSPLISIT) – NPC perempuan/klub/kamar/pantai/bikini,
+   kalimat bermakna ganda ("pipa", "masuk", "basah", "keras", "dari belakang",
+   "pegang"), Windah salah tingkah ("jangan liat", "astaghfirullah", "sensor",
+   "anak kecil tutup mata", bengong lama, "ih", tertawa malu). Tandai tingkat_sus.
+   Yang eksplisit (telanjang/adegan seks jelas) JANGAN diusulkan.
+3. IRONI / SARKAS – kontras angka/nasib ("viewer paling sepi", "padahal ...",
+   "percuma ..."), Windah menyindir diri sendiri atau penonton, roleplay dimarahi.
+4. DRAMA / CURHAT – opini kuat soal uang/AdSense/promosi/copyright/replay/kritik
+   penonton/haters, kalimat yang memancing debat di komentar.
+5. EKSPEKTASI VS REALITA – sesumbar ("gampang", "perfect", "liat nih", "aman")
+   lalu dalam 5–60 detik gagal ("WASTED", "mati", "anjir", "loh loh", tawa).
+6. PANIK / LUCU – teriak berulang, umpatan kaget, bug/NPC absurd, tawa panjang.
+
+SYARAT: hanya stream GTA VI channel resmi Windah Basudara; klip WAJIB ada
+gameplay (bukan cuma ngobrol depan cam); abaikan menu panjang, loading, iklan;
+momen 15–60 detik dari pemicu sampai punchline. Momen harus SPESIFIK: kalau
+judulnya bisa dipakai untuk 100 klip lain, berarti terlalu umum – buang.
 
 OUTPUT: tabel ringkas, lalu JSON persis dengan skema ini:
 {
@@ -42,20 +61,52 @@ OUTPUT: tabel ringkas, lalu JSON persis dengan skema ini:
   "klip": [
     {
       "id": 1,
-      "kategori": "ekspektasi_realita | panik | pertama | takjub | lucu | emosional",
+      "kategori": "banding | sus | ironi | drama | ekspektasi_realita | panik_lucu",
       "pemicu": "hh:mm:ss",
       "rekam_mulai": "hh:mm:ss (pemicu - 20 detik)",
       "rekam_selesai": "hh:mm:ss (pemicu + 40 detik)",
       "kutipan": "ucapan Windah persis dari transkrip",
       "dugaan_kejadian": "apa yang kemungkinan terjadi di game (tandai 'dugaan')",
+      "nama_adegan": "nama misi/cutscene/aktivitas (untuk dicari di VOD streamer lain)",
       "punchline": "kalimat/reaksi penutup",
-      "hook_ide": ["BARIS 1 / BARIS 2 / BARIS 3", "alternatif"],
+      "judul_bar": ["PERBEDAAN ... & WINDAH PAS ...", "alternatif"],
+      "ending_ide": "wasted | get_out | meanwhile | punchline_kalimat",
+      "tingkat_sus": "tidak | ambigu | nyerempet",
       "skor": 1-10,
-      "alasan_skor": "",
+      "alasan_skor": "kenapa orang awam langsung paham & penasaran dari judulnya",
       "keyakinan_timestamp": "tinggi | sedang | rendah"
     }
   ]
 }
-Urutkan dari skor tertinggi, maksimal 10 klip per segmen. Jangan mengarang:
-bila transkrip tidak jelas, tulis "tidak terbaca" dan turunkan keyakinan.
+Urutkan dari skor tertinggi, maksimal 10 klip per segmen. Skor tinggi hanya untuk
+momen yang konsepnya kebaca dari judul_bar saja. Jangan mengarang: bila transkrip
+tidak jelas, tulis "tidak terbaca" dan turunkan keyakinan.
+```
+
+## Prompt B - cari adegan yang sama di VOD streamer lain (untuk format banding)
+
+```
+Saya sedang membuat klip perbandingan "streamer lain vs Windah Basudara" di GTA VI.
+Adegan yang dicari: <nama_adegan dari Prompt A, mis. "misi benerin pipa (Hector)">.
+Kutipan/dugaan kejadian di versi Windah: <kutipan + dugaan_kejadian>.
+
+Saya kirim 1 link VOD streamer lain. Cari di transkrip kapan dia memainkan adegan
+yang SAMA (dialog NPC/misi yang sama, tempat yang sama). Pindai per segmen 3 jam.
+
+OUTPUT JSON:
+{
+  "video_url": "",
+  "streamer": "",
+  "adegan": "",
+  "ketemu": true,
+  "mulai_adegan": "hh:mm:ss",
+  "rekam_mulai": "hh:mm:ss (mulai_adegan - 20 detik)",
+  "rekam_selesai": "hh:mm:ss (mulai_adegan + 60 detik)",
+  "penanda_dialog": "kalimat NPC/game yang sama persis di kedua VOD (untuk sinkron)",
+  "versi_streamer_ini": "apa yang dia lakukan/ucapkan - normal/mulus/beda dari Windah?",
+  "kontras": "kenapa perbandingannya lucu/ironis (1 kalimat)",
+  "keyakinan_timestamp": "tinggi | sedang | rendah"
+}
+Kalau adegannya tidak ada, tulis "ketemu": false dan sebut segmen yang sudah dipindai.
+Jangan mengarang timestamp.
 ```
