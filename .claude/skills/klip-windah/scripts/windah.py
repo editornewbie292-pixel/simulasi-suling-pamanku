@@ -732,28 +732,45 @@ def bangun(rencana, tmp, pratinjau=None):
     return inputs, f, amap, dur
 
 
-def buat_get_out(utama, cfg, tmp):
-    """Ending meme "get out": klip berhenti mendadak tepat setelah momen lucu/sus/sarkas - frame terakhir
-    dibekukan, suara asli + musik mati, lalu SFX get out diputar UTUH (baru kemudian endcard).
-    Rencana: "get_out": true atau {"sfx": "getout", "volume": 1.0, "ekor": 0.15}."""
+def buat_get_out(rencana, cfg, tmp):
+    """Ending meme "get out": tepat setelah momen lucu/sus/sarkas (akhir `potong`) suara asli + musik dipotong
+    dan SFX get out diputar UTUH, sementara VIDEO TETAP MENGALIR (lanjutan rekaman, tanpa efek/caption).
+    Bila rekaman habis, sisanya layar hitam. Lalu endcard.
+    Rencana: "get_out": true atau {"sfx": "getout", "volume": 1.0, "ekor": 0.15, "hitam": false}."""
     cfg = cfg if isinstance(cfg, dict) else {}
     sfx = sfx_path(cfg.get("sfx", "getout"))
     if not sfx:
         raise SystemExit("SFX get out tidak ada di sfx/ - jalankan sinkron-sfx dulu.")
     d = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
                               str(sfx)], capture_output=True, text=True).stdout.strip()) + float(cfg.get("ekor", 0.15))
-    frame_ = tmp / "getout.png"
-    run(["ffmpeg", "-v", "error", "-y", "-sseof", "-0.1", "-i", utama, "-frames:v", "1", "-update", "1", frame_],
-        quiet=True)
+    akhir = rencana["potong"][1]
+    sisa = max(0.0, probe(rencana["input"])["durasi"] - akhir - 0.05)
+    lanjut = 0.0 if cfg.get("hitam") else min(d, sisa)
+    vid = tmp / "getout_v.mp4"
+    if lanjut >= 0.1:  # lanjutan rekaman, layout sama, tanpa efek/caption/sfx
+        r2 = {k: v for k, v in rencana.items() if k not in (
+            "buang", "glitch", "speedlines", "impact", "cam_penuh", "tutup", "zoom", "sfx_tambahan", "hook",
+            "flash_awal", "judul", "caption", "caption_frasa", "_caption", "cam_hd", "get_out")}
+        r2["potong"] = [akhir, akhir + lanjut]
+        r2["tanpa_sfx"] = True
+        inputs, f, amap2, _ = bangun(r2, tmp)
+        if amap2:
+            f.append("[aout]anullsink")
+        run(["ffmpeg", "-v", "error", "-y", *inputs, "-filter_complex", ";".join(f), "-map", "[vout]",
+             "-t", f"{lanjut:.3f}", "-r", FPS, "-c:v", "libx264", "-preset", "medium", "-crf", "17", vid],
+            quiet=True)
+        vf = f"[0:v]fps={FPS},tpad=stop_mode=add:stop_duration={d:.3f}:color=black,trim=duration={d:.3f},setsar=1,format=yuv420p[v]"
+        vin = ["-i", vid]
+    else:
+        vf = f"[0:v]setsar=1,format=yuv420p[v]"
+        vin = ["-f", "lavfi", "-t", f"{d:.3f}", "-i", f"color=black:s={W}x{H}:r={FPS}"]
     out = tmp / "getout.mp4"
-    run(["ffmpeg", "-v", "error", "-y", "-loop", "1", "-framerate", FPS, "-t", f"{d:.3f}", "-i", frame_,
-         "-i", sfx, "-filter_complex",
-         f"[0:v]scale={W}:{H},setsar=1,format=yuv420p[v];"
-         f"[1:a]aresample=44100,aformat=channel_layouts=stereo,volume={float(cfg.get('volume', 1.0)):.2f},"
+    run(["ffmpeg", "-v", "error", "-y", *vin, "-i", sfx, "-filter_complex",
+         vf + f";[1:a]aresample=44100,aformat=channel_layouts=stereo,volume={float(cfg.get('volume', 1.0)):.2f},"
          f"apad=whole_dur={d:.3f}[a]",
          "-map", "[v]", "-map", "[a]", "-t", f"{d:.3f}", "-r", FPS, "-c:v", "libx264", "-preset", "medium",
          "-crf", "17", "-c:a", "aac", "-b:a", "192k", "-ar", "44100", out], quiet=True)
-    print(f"  get out: {d:.2f} dtk (frame beku + {Path(sfx).name})")
+    print(f"  get out: {d:.2f} dtk (video mengalir {lanjut:.2f} dtk, {Path(sfx).name})")
     return out
 
 
@@ -815,7 +832,7 @@ def render(rencana_path, pratinjau=False):
             pasang_musik(isi, isi_m, rencana["musik"])
             bagian = [isi_m]
         if rencana.get("get_out"):
-            bagian.append(buat_get_out(utama, rencana["get_out"], tmp))
+            bagian.append(buat_get_out(rencana, rencana["get_out"], tmp))
         if rencana.get("endcard"):
             bagian.append(rencana["endcard"])
         sambung(bagian, out, tmp)

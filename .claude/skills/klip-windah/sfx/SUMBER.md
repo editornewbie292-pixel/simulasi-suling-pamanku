@@ -18,8 +18,11 @@ Nama file -> fungsi (lihat `PERAN` di `scripts/sinkron_sfx.py`): nama persis fun
 | sfx/boom_sinematik.wav | cinematic-boom | impact dramatis (`sfx_tambahan`) |
 | sfx/whoosh.wav | whoosh, swoosh | SEMUA transisi (potongan/glitch, keluar kartu hook), sebelum speed lines tebal |
 | sfx/glitch.wav, sfx/shutter.wav | glitch / shutter, camera | tidak dipakai untuk transisi (pengguna tidak suka); hanya bila diminta |
-| sfx/getout.wav | get-out, getout | ENDING lucu: `"get_out": true` - klip dipotong tepat setelah momen sus/lucu/sarkas, frame beku + get out, lalu endcard (permintaan pengguna 21 Nov 2026) |
-| sfx/fatality.wav, sfx/awkward_moment.wav, sfx/bonecrack.wav | fatality / awkward / bone-crack | ada di Drive (21 Nov 2026), fungsi belum disepakati - tanya pengguna sebelum dipakai |
+| sfx/getout.wav | get-out, getout | ENDING lucu: `"get_out": true` - klip dipotong tepat setelah momen sus/lucu/sarkas, video tetap mengalir (tanpa freeze) + get out, lalu endcard (permintaan pengguna 21 Nov 2026) |
+| sfx/fatality.wav | fatality | momen sadis/brutal (`sfx_tambahan`) - disetujui 21 Nov 2026 |
+| sfx/awkward_moment.wav | awkward | momen canggung/sepi |
+| sfx/bonecrack.wav | bone-crack | pukulan/jatuh/tabrakan |
+| (belum diolah) 02_shop-channel | - | backsound santai alternatif - perlu ganti nama di Drive jadi `backsound_shop.mp3` agar dikenali |
 | sfx/bruh.wav | bruh | momen gagal/kocak: `"sfx_tambahan": [["bruh", detik, 0.9]]` |
 | sfx/klik.wav, riser, scratch | click / riser / scratch | opsional |
 | musik/<nama>_loop.wav | musik, music, backsound, bgm, tiktok audio, lofi, phonk | backsound: `"musik": true` |
