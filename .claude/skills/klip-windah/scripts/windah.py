@@ -732,6 +732,31 @@ def bangun(rencana, tmp, pratinjau=None):
     return inputs, f, amap, dur
 
 
+def buat_get_out(utama, cfg, tmp):
+    """Ending meme "get out": klip berhenti mendadak tepat setelah momen lucu/sus/sarkas - frame terakhir
+    dibekukan, suara asli + musik mati, lalu SFX get out diputar UTUH (baru kemudian endcard).
+    Rencana: "get_out": true atau {"sfx": "getout", "volume": 1.0, "ekor": 0.15}."""
+    cfg = cfg if isinstance(cfg, dict) else {}
+    sfx = sfx_path(cfg.get("sfx", "getout"))
+    if not sfx:
+        raise SystemExit("SFX get out tidak ada di sfx/ - jalankan sinkron-sfx dulu.")
+    d = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+                              str(sfx)], capture_output=True, text=True).stdout.strip()) + float(cfg.get("ekor", 0.15))
+    frame_ = tmp / "getout.png"
+    run(["ffmpeg", "-v", "error", "-y", "-sseof", "-0.1", "-i", utama, "-frames:v", "1", "-update", "1", frame_],
+        quiet=True)
+    out = tmp / "getout.mp4"
+    run(["ffmpeg", "-v", "error", "-y", "-loop", "1", "-framerate", FPS, "-t", f"{d:.3f}", "-i", frame_,
+         "-i", sfx, "-filter_complex",
+         f"[0:v]scale={W}:{H},setsar=1,format=yuv420p[v];"
+         f"[1:a]aresample=44100,aformat=channel_layouts=stereo,volume={float(cfg.get('volume', 1.0)):.2f},"
+         f"apad=whole_dur={d:.3f}[a]",
+         "-map", "[v]", "-map", "[a]", "-t", f"{d:.3f}", "-r", FPS, "-c:v", "libx264", "-preset", "medium",
+         "-crf", "17", "-c:a", "aac", "-b:a", "192k", "-ar", "44100", out], quiet=True)
+    print(f"  get out: {d:.2f} dtk (frame beku + {Path(sfx).name})")
+    return out
+
+
 def render(rencana_path, pratinjau=False):
     rencana = json.loads(Path(rencana_path).read_text(encoding="utf-8"))
     rencana["_rencana_path"] = str(rencana_path)
@@ -789,6 +814,8 @@ def render(rencana_path, pratinjau=False):
             isi_m = tmp / "isi_musik.mp4"
             pasang_musik(isi, isi_m, rencana["musik"])
             bagian = [isi_m]
+        if rencana.get("get_out"):
+            bagian.append(buat_get_out(utama, rencana["get_out"], tmp))
         if rencana.get("endcard"):
             bagian.append(rencana["endcard"])
         sambung(bagian, out, tmp)

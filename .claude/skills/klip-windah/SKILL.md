@@ -116,6 +116,9 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
     ketegangan (menunggu, mengejar), **tebal** 1,5-2,5 detik di puncak (+ whoosh otomatis 0,35 detik sebelumnya).
   - `impact` (detik): kilat putih + layar bergetar 0,4 detik + boom. Taruh tepat di puncak (teriakan, ledakan,
     "LET'S GO"). Maksimal 1-2 per klip.
+  - `get_out`: `true` / `{"sfx": "getout", "volume": 1.0}` - ending meme: akhiri `potong` TEPAT setelah momen
+    sus/lucu/sarkas; render membekukan frame terakhir, mematikan suara asli + musik, memutar SFX get out utuh,
+    lalu endcard. Pakai untuk klip yang berakhir dengan punchline (permintaan pengguna).
   - `cam_penuh` `[[mulai, selesai]]`: potong ke wajah layar penuh untuk reaksi besar (opsional di TikTok).
 
 ### Kartu hook + caption per frasa (standar "editan bagus" dari referensi pengguna)

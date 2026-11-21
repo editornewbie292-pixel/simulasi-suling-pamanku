@@ -36,10 +36,15 @@ PERAN = [
     ("riser", ["riser"]),
     ("klik", ["klik", "click"]),
     ("bruh", ["bruh"]),
+    ("getout", ["get-out", "get out", "getout", "get_out"]),
+    ("fatality", ["fatality"]),
+    ("awkward", ["awkward"]),
+    ("bonecrack", ["bone-crack", "bone crack", "bonecrack"]),
     ("scratch", ["scratch"]),
 ]
 MAKS_DETIK = {"sting": 2.0, "boom": 1.6, "boom_sinematik": 3.0, "whoosh": 1.0, "glitch": 1.2,
-              "shutter": 1.0, "riser": 3.0, "klik": 0.4, "bruh": 1.2, "scratch": 1.5}
+              "shutter": 1.0, "riser": 3.0, "klik": 0.4, "bruh": 1.2, "scratch": 1.5,
+              "getout": 3.0, "fatality": 3.0, "awkward": 4.0, "bonecrack": 1.5}
 
 
 def tebak_peran(nama):
