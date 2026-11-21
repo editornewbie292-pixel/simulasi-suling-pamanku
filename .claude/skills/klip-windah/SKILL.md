@@ -114,7 +114,7 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
     judul hilang (sekitar `judul_durasi` - 0,2) bila ingin persis referensi.
   - `speedlines` `[[mulai, selesai, "tipis"|"tebal"]]`: garis anime putih dari tepi. **Tipis** sepanjang
     ketegangan (menunggu, mengejar), **tebal** 1,5-2,5 detik di puncak (+ whoosh otomatis 0,35 detik sebelumnya).
-  - `impact` (detik): kilat putih + layar bergetar 0,4 detik + boom. Taruh tepat di puncak (teriakan, ledakan,
+  - `impact` (detik): kilat putih + layar bergetar 0,4 detik + boom. `"sfx_impact": "fatality"` mengganti boom-nya. Taruh tepat di puncak (teriakan, ledakan,
     "LET'S GO"). Maksimal 1-2 per klip.
   - `get_out`: `true` / `{"sfx": "getout", "volume": 1.0}` - ending meme: akhiri `potong` TEPAT setelah momen
     sus/lucu/sarkas; suara asli + musik langsung dipotong, SFX get out diputar utuh sementara VIDEO TETAP

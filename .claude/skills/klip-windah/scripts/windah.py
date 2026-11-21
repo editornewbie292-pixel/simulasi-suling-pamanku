@@ -595,7 +595,7 @@ def bangun(rencana, tmp, pratinjau=None):
                      f"crop={W}:{H}:x='(iw-ow)/2+{gx}':y='(ih-oh)/2+{gy}',"
                      f"eq=brightness=0.28:enable='{antara([(a, a + 0.07) for a in impact])}'[b3]")
             cur = "b3"
-            sfx += [("boom", a, 0.9) for a in impact]
+            sfx += [(rencana.get("sfx_impact", "boom"), a, 0.9) for a in impact]
         # speed lines
         for jenis in ("tipis", "tebal"):
             segs = [(s[0], s[1]) for s in rencana.get("speedlines", []) if (s[2] if len(s) > 2 else "tipis") == jenis]
