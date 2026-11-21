@@ -37,6 +37,11 @@ ABAIKAN = re.compile(r"^(l\s*)?(lag+|ngelag|iklan|l iklan|buffer\w*|delay|patah\
                      r"!\w+|first|hadir|halo\w*|p+)$", re.I)
 
 
+# jawaban polling (Windah bertanya, chat menjawab serempak): interaksi, bukan momen klip -> bobot kecil
+POLLING = {"boleh", "bolehh", "setuju", "se7", "bukan", "bukann", "iya", "iyaa", "ya", "gak", "ga", "nggak", "tidak",
+           "jangan", "kiri", "kanan", "lanjut", "gas", "gass", "skip", "mau", "udah", "belum", "1", "2", "3", "a", "b"}
+
+
 def api(path, **q):
     url = API + path + "?" + urllib.parse.urlencode(q)
     req = urllib.request.Request(url, headers={"User-Agent": "klip-windah-pantau/1.0"})
@@ -138,17 +143,20 @@ def main():
                 df[w] += 1
             naik.sort(reverse=True)
             z_rate = (rate - base) / max(0.15, base * 0.35)
-            skor = max(0.0, z_rate) + 4 * tawa + (top_sama[0][0] / 4 if top_sama else 0) + 0.6 * len(naik[:3])
+            polling = bool(top_sama) and top_sama[0][1].strip(" !?.") in POLLING
+            bobot_sama = 0.06 if polling else 0.25
+            skor = max(0.0, z_rate) + 4 * tawa + (top_sama[0][0] * bobot_sama if top_sama else 0) + 0.6 * len(naik[:3])
             skor += 0.5 * min(4, kat["sus"]) + 0.3 * min(4, kat["gagal"])
             t_awal = min(p[0] for p in pesan)
-            rec = {"jam_live": jam(t_awal - t_mulai), "detik_live": round(t_awal - t_mulai), "pesan": len(pesan),
+            rec = {"polling": polling, "jam_live": jam(t_awal - t_mulai), "detik_live": round(t_awal - t_mulai), "pesan": len(pesan),
                    "kecepatan": round(rate, 2), "dasar": round(base, 2), "tawa": round(tawa, 2), "kategori": kat,
                    "sama": top_sama, "naik": naik[:5], "skor": round(skor, 1),
                    "contoh": [t for *_, t in pesan[:6]]}
             log.write(json.dumps(rec, ensure_ascii=False) + "\n")
             log.flush()
             if skor >= a.ambang and n_jendela > 3:
-                jenis = max(kat, key=kat.get) if max(kat.values()) else ("lucu" if tawa > 0.2 else "rame")
+                jenis = "polling" if polling else (max(kat, key=kat.get) if max(kat.values()) else
+                                                    ("lucu" if tawa > 0.2 else "rame"))
                 # chat telat ±10-30 dtk dari kejadian -> usul rekam mulai 60 dtk sebelum jendela
                 print(f"MOMEN {rec['jam_live']} skor {rec['skor']} [{jenis}] chat {rate:.1f}/dtk (biasa {base:.1f}) "
                       f"tawa {tawa:.0%} sama {top_sama[:2]} naik {[w for _, w in naik[:3]]} "
