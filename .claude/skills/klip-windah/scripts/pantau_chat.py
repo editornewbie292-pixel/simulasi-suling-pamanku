@@ -32,6 +32,11 @@ KATA_PANTAU = {
 }
 
 
+# keluhan teknis / spam rutin: bukan momen (stream lag, iklan, bot)
+ABAIKAN = re.compile(r"^(l\s*)?(lag+|ngelag|iklan|l iklan|buffer\w*|delay|patah\w*|putus\w*|ngebug stream|"
+                     r"!\w+|first|hadir|halo\w*|p+)$", re.I)
+
+
 def api(path, **q):
     url = API + path + "?" + urllib.parse.urlencode(q)
     req = urllib.request.Request(url, headers={"User-Agent": "klip-windah-pantau/1.0"})
@@ -117,7 +122,8 @@ def main():
             sama = collections.defaultdict(set)
             for _, au, t in pesan:
                 sama[norm(t)].add(au)
-            top_sama = sorted(((len(s), t) for t, s in sama.items() if len(t) > 1), reverse=True)[:3]
+            top_sama = sorted(((len(s), t) for t, s in sama.items() if len(t) > 1 and not ABAIKAN.match(t)),
+                              reverse=True)[:3]
             tawa = sum(1 for *_, t in pesan if TAWA.search(t)) / max(1, len(pesan))
             kat = {k: sum(1 for *_, t in pesan if any(w in t.lower() for w in ws)) for k, ws in KATA_PANTAU.items()}
             # kata yang mendadak naik (dipelajari dari chat ini sendiri)
