@@ -1758,7 +1758,13 @@ def _render_bagian(rencana, bg, tmp, k, out, potong=None, audio=True):
             cur = overlay_popup(bg["popup"], tmp, tambah_, cur, fc, KW, KH, awal=f"pb{k}_")
             n = nn[0]
         if audio and info["audio"]:
-            fc.append(f"[0:a]aresample=44100,aformat=channel_layouts=stereo,asetpts=PTS-STARTPTS,"
+            # "pitch": semitone (mis. 4 = suara cempreng meme TikTok); tempo & durasi tetap
+            ps = float(bg.get("pitch", 0))
+            pitch = ""
+            if ps:
+                fk = 2 ** (ps / 12)
+                pitch = f"asetrate={44100 * fk:.0f},aresample=44100,atempo={1 / fk:.5f},"
+            fc.append(f"[0:a]aresample=44100,aformat=channel_layouts=stereo,{pitch}asetpts=PTS-STARTPTS,"
                       f"volume={float(bg.get('volume', 1.0))},apad=whole_dur={d:.3f}[aout]")
         else:
             args += ["-f", "lavfi", "-t", f"{d:.3f}", "-i", "anullsrc=r=44100:cl=stereo"]

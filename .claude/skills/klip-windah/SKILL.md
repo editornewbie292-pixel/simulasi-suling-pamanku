@@ -208,7 +208,9 @@ momen SPESIFIK yang kontras (topik umum "TOP 5", "ADA LAGU INDO" flop). Pola: pe
   `[[mulai, selesai, "atas"|"bawah"|"campur"], ...]` (gantian, mis. suara lawan dulu lalu Windah); `volume` per sumber.
 - **Banding berurutan** (`"format": "berurutan"`, gaya "YOUTUBER LAIN KETIKA LANDING"): `bagian` = daftar
   `{"input", "potong", "stream_box", "label"?, "fokus_x"?}` atau kartu `{"kartu": "MEANWHILE", "sub": "in our universe",
-  "durasi": 2.5, "sfx": "nama"?}` (latar hitam; bar judul disembunyikan). Streamer lain ±3 dtk/orang -> MEANWHILE ->
+  "durasi": 2.5, "sfx": "nama"?}` (latar hitam; bar judul disembunyikan). Bagian rekaman boleh `"pitch": 4` (semitone,
+  suara cempreng meme TikTok untuk punchline; tempo tetap). Format berurutan juga dipakai untuk klip polos 1:1
+  yang dipotong-potong (tiap potongan = satu bagian). Streamer lain ±3 dtk/orang -> MEANWHILE ->
   Windah -> punchline (WASTED/get out).
 - **Rekaman streamer lain DILARANG program motion klip** (lihat Aturan program no. 4): jangan merender banding dengan
   footage streamer lain; pakai untuk Windah-vs-Windah (mis. ekspektasi vs realita dua momen) saja.
