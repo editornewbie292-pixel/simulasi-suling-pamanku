@@ -15,6 +15,14 @@ Pola viral (21 Nov 2026): konsep > efek. Bar judul statis yang menjanjikan konfl
 "STREAMER LAIN KETIKA ...", "WINDAH TRAGEDI ..."), tanpa VO dan tanpa kartu hook animasi, 35-60 dtk, ending
 punchline. Topik umum ("TOP 5 ...", "ADA LAGU INDO") flop - yang meledak selalu momen SPESIFIK yang kontras.
 
+Strategi per platform (riset pengguna 22 Nov 2026):
+- TikTok: SIMPEL POLOS (bar judul / kartu hook sederhana) pada momen SUS dan momen IKONIK (adegan yang semua orang
+  bicarakan: misi besar, cutscene, bug terkenal, "mobil bang YB", lonjakan GG ratusan orang di chat).
+- YouTube Shorts: hashtag yang sama jarang tembus 100 rb; yang tertinggi (~40 rb) = CERITA ULANG momen dengan
+  VO pengguna + SFX + meme pekat (trollface, Patrick pura-pura gak liat, tanda "?", orang ketawa nunjuk) +
+  kolase gambar di hook. Momen cocoknya: kejadian beruntun yang bisa dinarasikan (bug, ngeles, salah paham, sial).
+- Pemantau live chat (`scripts/pantau_chat.py`) = penanda waktu nyata; Prompt A/C di VOD = konteks & kutipan.
+
 ## Prompt A - cari kandidat dari 1 VOD Windah
 
 ```
@@ -27,6 +35,9 @@ Klip yang meledak (>100 rb views) BUKAN yang efeknya ramai, tapi yang KONSEPNYA
 langsung kebaca dari satu judul. Topik umum (top 5, kompilasi, "ada lagu indo")
 SELALU flop. Cari MOMEN SPESIFIK dengan pola berikut (prioritas dari atas):
 
+0. IKONIK – adegan yang akan dibicarakan semua orang: misi/cutscene besar, pertama kali
+   bertemu karakter/kendaraan terkenal, bug lucu, momen yang membuat Windah teriak/tertawa
+   panjang. Isi platform "tiktok" (polos) atau "keduanya" bila bisa diceritakan ulang.
 1. BANDING – adegan yang PASTI dialami streamer lain juga, tapi versi Windah beda/
    kacau/ironis: misi cerita & cutscene (sebut nama misinya), tutorial pertama
    (terbang/landing, menyetir pertama, benerin sesuatu, mancing), momen awal/akhir
@@ -61,7 +72,8 @@ OUTPUT: tabel ringkas, lalu JSON persis dengan skema ini:
   "klip": [
     {
       "id": 1,
-      "kategori": "banding | sus | ironi | drama | ekspektasi_realita | panik_lucu",
+      "kategori": "sus | ikonik | banding | ironi | drama | ekspektasi_realita | panik_lucu",
+      "platform": "tiktok | yt_shorts | keduanya",
       "pemicu": "hh:mm:ss",
       "rekam_mulai": "hh:mm:ss (pemicu - 20 detik)",
       "rekam_selesai": "hh:mm:ss (pemicu + 40 detik)",
@@ -72,6 +84,7 @@ OUTPUT: tabel ringkas, lalu JSON persis dengan skema ini:
       "judul_bar": ["PERBEDAAN ... & WINDAH PAS ...", "alternatif"],
       "ending_ide": "wasted | get_out | meanwhile | punchline_kalimat",
       "tingkat_sus": "tidak | ambigu | nyerempet",
+      "meme_ide": [{"detik": "hh:mm:ss", "momen": "Windah ngeles", "keyword_meme": "patrick pura pura gak liat"}],
       "skor": 1-10,
       "alasan_skor": "kenapa orang awam langsung paham & penasaran dari judulnya",
       "keyakinan_timestamp": "tinggi | sedang | rendah"
@@ -109,4 +122,24 @@ OUTPUT JSON:
 }
 Kalau adegannya tidak ada, tulis "ketemu": false dan sebut segmen yang sudah dipindai.
 Jangan mengarang timestamp.
+```
+
+## Prompt C - cari momen "cerita ulang" untuk YouTube Shorts (VO + meme)
+
+```
+Saya membuat YouTube Shorts gaya "cerita ulang" dari stream GTA VI Windah Basudara:
+narasi suara (VO) + SFX + meme. Dari transkrip VOD berikut, cari 5-10 momen yang
+punya ALUR (awal -> kejadian aneh/sial/ngeles -> reaksi Windah -> punchline), 30-60
+detik, yang enak dinarasikan dalam 3-6 kalimat. Contoh bagus: Windah nemu bug lalu
+ngeles, salah paham dengan NPC, rencana gagal beruntun, barang hilang lalu muncul.
+
+Untuk tiap momen beri JSON:
+{"id":1, "mulai":"hh:mm:ss", "selesai":"hh:mm:ss", "judul_hook":"WINDAH NEMU BUG",
+ "alur":["setup","kejadian","reaksi","punchline"],
+ "kutipan_kunci":["ucapan Windah persis + hh:mm:ss"],
+ "naskah_vo":["kalimat narasi 1 (gaya santai, bahasa gaul)", "..."],
+ "meme_ide":[{"detik":"hh:mm:ss","momen":"Windah pura-pura nggak lihat",
+              "keyword_meme":"patrick pura pura gak liat"}],
+ "skor":1-10, "keyakinan_timestamp":"tinggi|sedang|rendah"}
+Jangan mengarang kutipan; tandai bagian yang tidak jelas.
 ```

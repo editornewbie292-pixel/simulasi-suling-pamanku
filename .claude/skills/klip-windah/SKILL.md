@@ -15,7 +15,17 @@ bash SKILL/scripts/klip-windah thumbnail RENCANA.json       # cover 9:16 (bagian
 bash SKILL/scripts/klip-windah sfx                          # buat ulang SFX bawaan
 bash SKILL/scripts/klip-windah sinkron RENCANA.json         # format banding: cari detik mulai rekaman streamer lain (suara game)
 bash SKILL/scripts/klip-windah cari-sus VIDEO               # kandidat momen sus/sindiran 18+ dari ucapan (-> VIDEO_sus.json)
+python3 -I -u SKILL/scripts/pantau_chat.py URL_LIVE --jendela 20 --ambang 6 > hasil-klip/pantau_live/monitor.log
+                                                            # pantau lonjakan live chat (YouTube Data API)
 ```
+**Pemantau live chat**: butuh API key YouTube Data API v3 di Network secrets environment (host www.googleapis.com,
+header X-Goog-Api-Key, tanpa prefiks). Jalankan di background, pantau `^MOMEN` lewat Monitor (grep --line-buffered,
+saring duplikat kata sama <3 menit), kirim notifikasi HP hanya untuk lonjakan kuat. Lonjakan "GG" ratusan orang =
+misi/cutscene besar (ikonik); jawaban polling ("boleh", "setuju", warna/rambut) bukan momen; baca `contoh` pesan di
+`chat_<id>.jsonl` untuk tahu konteksnya (mis. "L driving", "skill issue" = momen gagal lucu). Chat telat 10-30 dtk.
+**Strategi platform** (riset pengguna 22 Nov 2026): TikTok = polos, momen sus & ikonik. YouTube Shorts = cerita ulang
+dengan VO pengguna + SFX + meme pekat + kolase hook (Prompt C di `prompt/pencari-momen.md`). Meme: Claude memberi
+KEYWORD, pengguna yang mencari & mengunggah ke Drive (jangan mengunduh meme sendiri).
 Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkrip memakai Whisper `small`
 (sekitar 480 MB, diunduh dari huggingface.co saat pertama dipakai).
 
