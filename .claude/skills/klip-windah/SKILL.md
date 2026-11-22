@@ -37,7 +37,10 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
    otomatis disambung oleh `render`. Bila belum ada, render memberi PERINGATAN: beri tahu pengguna bahwa video
    belum boleh diposting.
 3. **Watermark resmi motion klip wajib** (`assets/watermark/motionklip.png`) di bagian klip (bukan di endcard).
-4. Opsional: "goreng" jumlah views / peak viewers Windah (sumber: streamcharts) sebagai meme atau jedag-jedug.
+4. **Rekaman streamer lain (MiawAug, dll.) DILARANG** oleh aturan motion klip (dikonfirmasi pengguna 22 Nov 2026).
+   Format `banding`/`berurutan` hanya boleh memakai rekaman Windah sendiri (mis. dua momen Windah, atau kartu teks
+   "STREAMER LAIN KETIKA ..." tanpa footage/nama/foto streamer lain - tanyakan pengguna dulu).
+5. Opsional: "goreng" jumlah views / peak viewers Windah (sumber: streamcharts) sebagai meme atau jedag-jedug.
    Angka harus dari sumber yang dikirim pengguna (screenshot/link) - jangan mengarang angka. Data yang sudah
    dikirim ada di `assets/data/streamcharts.json` (+ screenshot aslinya); tambahkan entri baru bila pengguna
    mengirim data baru, selalu dengan tanggal. Contoh: 18 Nov 2026 Windah **#1 dunia** peak viewers GTA VI
@@ -207,8 +210,8 @@ momen SPESIFIK yang kontras (topik umum "TOP 5", "ADA LAGU INDO" flop). Pola: pe
   `{"input", "potong", "stream_box", "label"?, "fokus_x"?}` atau kartu `{"kartu": "MEANWHILE", "sub": "in our universe",
   "durasi": 2.5, "sfx": "nama"?}` (latar hitam; bar judul disembunyikan). Streamer lain ±3 dtk/orang -> MEANWHILE ->
   Windah -> punchline (WASTED/get out).
-- **Rekaman streamer lain BUKAN bagian program clipper Windah**: sebelum dipakai, pastikan pengguna sudah cek aturan
-  motion klip/izinnya; ingatkan setiap kali membuat banding.
+- **Rekaman streamer lain DILARANG program motion klip** (lihat Aturan program no. 4): jangan merender banding dengan
+  footage streamer lain; pakai untuk Windah-vs-Windah (mis. ekspektasi vs realita dua momen) saja.
 - **Bar judul** (`"bar_judul": "TEKS"`, semua format): bar putih selebar layar sepanjang video, pengganti kartu hook.
   `"bar_gaya": "hitam"` (teks hitam tebal, bawaan) / `"outline"` (putih outline hitam); `bar_ukuran`, `bar_y`.
   Kotak: bar tepat di atas gambar, watermark pindah ke bawah gambar. Gaya polos = `kotak` + `"rasio_kotak": null` +

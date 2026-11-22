@@ -38,7 +38,7 @@ SELALU flop. Cari MOMEN SPESIFIK dengan pola berikut (prioritas dari atas):
 0. IKONIK – adegan yang akan dibicarakan semua orang: misi/cutscene besar, pertama kali
    bertemu karakter/kendaraan terkenal, bug lucu, momen yang membuat Windah teriak/tertawa
    panjang. Isi platform "tiktok" (polos) atau "keduanya" bila bisa diceritakan ulang.
-1. BANDING – adegan yang PASTI dialami streamer lain juga, tapi versi Windah beda/
+1. BANDING (riset saja – rekaman streamer lain dilarang; yang dipakai hanya versi Windah) – adegan yang PASTI dialami streamer lain juga, tapi versi Windah beda/
    kacau/ironis: misi cerita & cutscene (sebut nama misinya), tutorial pertama
    (terbang/landing, menyetir pertama, benerin sesuatu, mancing), momen awal/akhir
    stream (buka stream, end stream, jumlah viewer), bos/kejar-kejaran ikonik.
@@ -96,7 +96,7 @@ momen yang konsepnya kebaca dari judul_bar saja. Jangan mengarang: bila transkri
 tidak jelas, tulis "tidak terbaca" dan turunkan keyakinan.
 ```
 
-## Prompt B - cari adegan yang sama di VOD streamer lain (untuk format banding)
+## Prompt B - cari adegan yang sama di VOD streamer lain (TIDAK DIPAKAI: rekaman streamer lain dilarang motion klip; hanya untuk riset)
 
 ```
 Saya sedang membuat klip perbandingan "streamer lain vs Windah Basudara" di GTA VI.
