@@ -25,6 +25,8 @@ FONT_JUDUL = SKILL / "assets/fonts/Anton-Regular.ttf"
 FONT_TEKS = SKILL / "assets/fonts/Inter.ttf"
 SFX_DIR = SKILL / "sfx"
 SFX_BAWAAN = SFX_DIR / "bawaan"
+ASET = SKILL.parents[2] / "aset"  # pustaka aset bersama di akar repo (SFX/BGM CC0, LUT) - lihat aset/LISENSI.md
+SFX_PILIHAN = {}  # slot -> file, dari "sfx_pilihan" di rencana (pilihan pengguna dari aset/)
 W, H, FPS = 1080, 1920, 30
 WATERMARK = SKILL / "assets/watermark/motionklip.png"
 ENDCARD_DIR = SKILL / "assets/endcard"  # template 3 detik dari program clipper
@@ -407,7 +409,28 @@ def buat_sfx():
 SFX_ALIAS = {"glitch": ["glitch", "shutter"]}  # tanpa glitch milik pengguna: pakai shutter-nya
 
 
+def cari_aset(nama):
+    """Path file aset: mutlak, relatif folder kerja, relatif SKILL, atau relatif aset/ (ekstensi boleh dihilangkan).
+    Contoh: "sfx/impact_deep", "kenney-cc0/impact-sounds/impactPunch_heavy_000", "aset/bgm/bgm_lofi_focus.wav"."""
+    raw = Path(str(nama))
+    calon = [raw, SKILL / raw, ASET / raw, ASET.parent / raw]
+    for c in calon:
+        for p in [c] + [c.with_name(c.name + e) for e in (".wav", ".mp3", ".ogg", ".m4a", ".cube")]:
+            if p.is_file():
+                return p
+    raise SystemExit(f"aset tidak ditemukan: {nama} (dicari juga di {ASET})")
+
+
+def pakai_pilihan(rencana):
+    SFX_PILIHAN.clear()
+    SFX_PILIHAN.update(rencana.get("sfx_pilihan") or {})
+
+
 def sfx_path(nama):
+    if nama in SFX_PILIHAN:
+        return cari_aset(SFX_PILIHAN[nama])  # pilihan pengguna untuk video ini menang
+    if "/" in str(nama):
+        return cari_aset(nama)  # langsung path aset, mis. di sfx_tambahan
     for n in SFX_ALIAS.get(nama, [nama]):
         for ext in ("wav", "mp3", "m4a", "ogg"):
             p = SFX_DIR / f"{n}.{ext}"
@@ -437,6 +460,7 @@ def antara(segs):
 
 
 def bangun(rencana, tmp, pratinjau=None):
+    pakai_pilihan(rencana)
     src = rencana["input"]
     info = probe(src)
     t0, t1 = rencana.get("potong") or [0, info["durasi"]]
@@ -457,6 +481,14 @@ def bangun(rencana, tmp, pratinjau=None):
     cam = rencana.get("cam_box")
     efek = True  # efek visual juga tampil di pratinjau; audio hanya saat render
     geser = f"+{pratinjau:.3f}/TB" if pratinjau is not None else ""
+    # LUT (.cube) untuk warna gameplay + cam; kartu hook, watermark, teks, dan endcard tidak terkena
+    lut = ""
+    if rencana.get("lut"):
+        lp = cari_aset(rencana["lut"]).resolve().as_posix()  # di dalam '...' ffmpeg membaca apa adanya
+        kuat = float(rencana.get("lut_kekuatan", 1.0))
+        lut = f",lut3d=file='{lp}'" if kuat >= 1 else None
+        if lut is None:  # campur dengan aslinya
+            lut = f",split=2[la_X][lb_X];[lb_X]lut3d=file='{lp}'[lc_X];[la_X][lc_X]blend=all_expr='A*{1 - kuat:.2f}+B*{kuat:.2f}'"
 
     inputs, f = [], []
     if pratinjau is not None:
@@ -486,12 +518,12 @@ def bangun(rencana, tmp, pratinjau=None):
     butuh += len(zoom)
     if pratinjau is None and len(simpan) > 1:
         n = len(simpan)
-        f.append(f"[0:v]fps={FPS},setpts=PTS-STARTPTS,split={n}" + "".join(f"[vs{k}]" for k in range(n)))
+        f.append(f"[0:v]fps={FPS},setpts=PTS-STARTPTS{lut.replace('_X', 's')},split={n}" + "".join(f"[vs{k}]" for k in range(n)))
         for k, (a, b) in enumerate(simpan):
             f.append(f"[vs{k}]trim=start={a:.3f}:end={b:.3f},setpts=PTS-STARTPTS[vt{k}]")
         f.append("".join(f"[vt{k}]" for k in range(n)) + f"concat=n={n}:v=1:a=0[pre0]")
     else:
-        f.append(f"[0:v]fps={FPS},setpts=PTS-STARTPTS{geser}[pre0]")
+        f.append(f"[0:v]fps={FPS},setpts=PTS-STARTPTS{geser}{lut.replace('_X', 's')}[pre0]")
     pre = "pre0"
     # tutup: buramkan area sumber (notifikasi ponsel, UI) [x, y, w, h, mulai, selesai]
     for k, (x, y, w, h, a, b) in enumerate(rencana.get("tutup", [])):
@@ -513,7 +545,7 @@ def bangun(rencana, tmp, pratinjau=None):
             i_hd = tambah("-ss", f"{pratinjau:.3f}", "-t", "0.2", "-i", cam_hd)
         else:
             i_hd = tambah("-i", cam_hd)
-        f.append(f"[{i_hd}:v]fps={FPS},setpts=PTS-STARTPTS{geser},split=2[hd1][hd2]")
+        f.append(f"[{i_hd}:v]fps={FPS},setpts=PTS-STARTPTS{geser}{lut.replace('_X', 'h')},split=2[hd1][hd2]")
         cam_src = ["hd1", "hd2"]
         cam = [0, 0, even(cam[2]) * 4, even(cam[3]) * 4]
     else:
@@ -804,9 +836,7 @@ def pasang_musik(inp, out, mus):
     musik turun saat ada suara Windah/game, naik lagi saat sepi."""
     if isinstance(mus, str):
         mus = {"file": mus}
-    f = Path(mus["file"])
-    if not f.is_absolute() and not f.exists():
-        f = SKILL / f
+    f = cari_aset(mus["file"])  # mis. "bgm/bgm_upbeat_vlog" dari aset/, atau musik/...
     dur = probe(inp)["durasi"]
     vol = float(mus.get("volume_db", -15))
     fc = (f"[1:a]aresample=44100,aformat=channel_layouts=stereo,atrim=0:{dur:.3f},asetpts=PTS-STARTPTS,"
@@ -1143,7 +1173,8 @@ def buat_hook(rencana, tmp):
     args = ["-framerate", str(FPS), "-i", fdir / "%04d.png"]
     fc = []
     lab = []
-    if any((SFX_DIR / f"sting.{e}").exists() for e in ("wav", "mp3")):
+    pakai_pilihan(rencana)
+    if "sting" in SFX_PILIHAN or any((SFX_DIR / f"sting.{e}").exists() for e in ("wav", "mp3")):
         sfx = [("sting", 0.0, 0.9), ("glitch", dur - 0.47, 0.6), ("whoosh", dur - 0.3, 0.7)]
     else:
         sfx = [("whoosh", 0.0, 0.9), ("boom", 0.22, 0.8), ("glitch", dur - 0.47, 0.6), ("whoosh", dur - 0.3, 0.7)]
