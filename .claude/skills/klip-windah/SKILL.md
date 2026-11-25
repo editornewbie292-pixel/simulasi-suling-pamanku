@@ -45,6 +45,18 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
   `musik/SUMBER.md`): di bawah kartu hook + klip, ducking otomatis, endcard tidak disentuh. Pakai untuk klip baru.
 - **SFX**: pakai file pilihan pengguna di `sfx/` (lihat `sfx/SUMBER.md`). Pengguna menilai selera SFX Claude
   jelek - jangan memilih/mengunduh SFX sendiri; minta pengguna yang memilih.
+- **Pustaka aset repo (`aset/` di akar repo, ter-commit, lihat `aset/LISENSI.md`)**: 40 SFX + 9 BGM CC0,
+  9 paket audio Kenney CC0, 5 LUT (CC BY 4.0). Path di rencana relatif `aset/`, ekstensi boleh dihilangkan.
+  - **Katalog untuk DIDENGAR PENGGUNA**: `python3 -I SKILL/scripts/katalog_aset.py hasil-klip/katalog_sfx.html`
+    (bawaan: sfx + Kenney impact/interface/digital) dan `... hasil-klip/katalog_bgm.html bgm/mp3 kenney-cc0/music-jingles`;
+    kirim dengan SendUserFile. Tetap pengguna yang memilih - jangan memilih SFX/BGM dari `aset/` sendiri.
+  - `"sfx_pilihan": {"boom": "sfx/impact_deep", "whoosh": "...", "glitch": "...", "sting": "..."}` mengganti slot
+    SFX otomatis untuk video ini (mengalahkan `sfx/` dan bawaan; `sting` mengaktifkan pembuka kartu hook).
+  - `"sfx_tambahan": [["sfx/pop_bubble", 3.2, 0.8]]` - nama boleh langsung path aset.
+  - `"musik": {"file": "bgm/bgm_upbeat_vlog", "volume_db": -15}` - BGM CC0, diloop otomatis, aman Content ID
+    (lebih aman daripada audio TikTok).
+  - `"lut": "lut/slay-04-film"`, `"lut_kekuatan": 0.7` (0-1) - warna gameplay + cam saja (kartu hook, teks,
+    watermark, endcard tidak terkena). **Wajib kredit "LUT by slay"** di caption/deskripsi postingan - ingatkan pengguna.
 - **Kualitas sumber menentukan HD-nya hasil.** Rekaman layar HP (mis. 1608x720) hanya memuat stream 720p dan cam
   ~270 px yang harus diperbesar ~4x. Render memakai Lanczos + penajaman otomatis, tapi tidak bisa menambah detail.
   Sarankan pengguna merekam dari PC/laptop layar 1080p+ (OBS / Xbox Game Bar Win+G), YouTube 1080p60 layar penuh,
