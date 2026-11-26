@@ -1,5 +1,5 @@
 # UTANG BAPAK
-Subjudul kartu judul: *ditagih di hari pemakaman* · Moral: kebaikan seorang bapak sering baru kelihatan setelah dia tiada · Perkiraan durasi: ~8 menit (~1.000 kata)
+Subjudul kartu judul: *ditagih di hari pemakaman* · Moral: kebaikan seorang bapak sering baru kelihatan setelah dia tiada · Perkiraan durasi: ~6 menit (~750 kata)
 
 ## Tokoh
 - **Pak Darto**: tukang becak, kurus, kaos lusuh, handuk kecil di leher
@@ -42,7 +42,7 @@ yang tidak pernah dia ceritakan ke siapa pun.
 ### 2. Kartu judul
 UTANG BAPAK — ditagih di hari pemakaman
 
-### 3. Latar (0:40)
+### 3. Latar (0:42)
 [Adegan: 25 tahun sebelumnya. Rumah kayu yang sama, lebih baru. Malam, lampu minyak.]
 25 tahun sebelumnya,
 Pak Darto narik becak dari subuh sampai isya.
@@ -65,7 +65,7 @@ Rahmat nggak ngerti.
 Perutnya keroncongan.
 Dan Bapaknya malah menabung buat orang asing.
 
-### 4. Malam hujan (1:45)
+### 4. Malam hujan (1:19)
 [Adegan: malam, hujan deras, jalan kota kecil. Becak dengan terpal plastik.]
 Suatu malam, hujan turun deras.
 Pak Darto sedang mengantar Koh Liong,
@@ -98,7 +98,7 @@ lalu mengikat kelereng itu di setang becaknya.
 [Adegan: close-up kelereng biru di setang becak, berkilau kena lampu.]
 Besoknya, Koh Liong nggak pernah naik becak Pak Darto lagi.
 
-### 5. Tawaran gelap (3:00)
+### 5. Tawaran gelap (2:23)
 [Adegan: pasar, sore. Kang Diman berbisik di samping becak.]
 Bulan-bulan berikutnya makin sulit.
 Suatu sore, Kang Diman datang berbisik.
@@ -130,7 +130,7 @@ Karung yang dia angkut ternyata barang curian.
 Tapi Rahmat sudah terlanjur
 berhenti bicara pada Bapaknya.
 
-### 6. Telepon terakhir (4:20)
+### 6. Telepon terakhir (3:21)
 [Adegan: lompatan waktu. Kota besar, kantor kecil, Rahmat dewasa memakai kemeja.]
 Tahun demi tahun lewat.
 Rahmat sekolah, kerja,
@@ -158,7 +158,7 @@ Kali ini dari Ibu.
 Suaranya cuma satu kalimat.
 Bapakmu sudah nggak ada, Le.
 
-### 7. Kembali ke pemakaman (5:30)
+### 7. Kembali ke pemakaman (4:04)
 [Adegan: kembali ke halaman rumah, sama seperti hook. Mobil hitam, pelayat.]
 Dan sekarang,
 di hari pemakaman Bapaknya,
@@ -199,7 +199,7 @@ Saya juga nggak.
 Untuk pertama kalinya,
 Rahmat bicara persis seperti Bapaknya.
 
-### 8. Kaleng (7:00)
+### 8. Kaleng (5:19)
 [Adegan: malam, dalam rumah. Rahmat menurunkan kaleng dari atas lemari.]
 Malam itu, Rahmat menurunkan kaleng biskuit dari atas lemari.
 Berat.
@@ -223,7 +223,7 @@ Kalengnya sudah hampir penuh, Mat.
 Dia cuma mau bilang,
 tabungannya sudah siap.
 
-### 9. Moral dan CTA (7:50)
+### 9. Moral dan CTA (6:00)
 [Adegan: pagi. Rahmat duduk di becak tua, mengelap kelereng biru. Laras di sampingnya.]
 Ternyata,
 kebaikan seorang bapak
