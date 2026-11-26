@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# ambil-link URL [FOLDER]
+# Link Google Drive (file)  -> unduh ke FOLDER (bawaan hasil-klip/<id>/), cetak path file.
+# Link Google Drive (folder)-> daftar file (uvx gdown --folder), unduh semua video.
+# Link YouTube              -> TIDAK bisa diunduh dari cloud (cek bot YouTube). Cetak info video
+#                              lewat YouTube Data API (judul, channel, durasi) lalu keluar kode 2.
+set -euo pipefail
+URL="${1:?pakai: ambil-link URL [FOLDER]}"
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+unduh_drive() { # ID FOLDER
+  local id="$1" dir="$2" tmp name
+  mkdir -p "$dir"
+  tmp="$dir/.unduh_$id"
+  curl -sSL -D "$tmp.h" -o "$tmp" \
+    "https://drive.usercontent.google.com/download?id=$id&export=download&confirm=t"
+  name="$(grep -i '^content-disposition' "$tmp.h" | sed -n 's/.*filename="\([^"]*\)".*/\1/p' | tail -1 || true)"
+  rm -f "$tmp.h"
+  if file -b --mime-type "$tmp" | grep -q '^text/html'; then
+    rm -f "$tmp"
+    echo "GAGAL: Drive mengembalikan halaman HTML (file belum dibagikan 'Siapa saja yang memiliki link'?)" >&2
+    return 1
+  fi
+  name="${name:-$id.mp4}"
+  name="${name//\//_}"
+  mv "$tmp" "$dir/$name"
+  echo "$dir/$name"
+}
+
+case "$URL" in
+  *youtube.com*|*youtu.be*)
+    id="$(python3 -c 'import sys,re,urllib.parse as u
+s=sys.argv[1]; p=u.urlparse(s)
+if "youtu.be" in p.netloc: print(p.path.strip("/").split("/")[0])
+else:
+  q=u.parse_qs(p.query).get("v")
+  m=re.search(r"/(shorts|live|embed)/([\w-]{11})", p.path)
+  print(q[0] if q else (m.group(2) if m else ""))' "$URL")"
+    [ -n "$id" ] || { echo "ID video YouTube tidak terbaca dari link" >&2; exit 1; }
+    curl -s "https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=$id" |
+      python3 -c 'import sys,json
+d=json.load(sys.stdin).get("items") or []
+if not d: print("Video tidak ditemukan / privat"); sys.exit(0)
+v=d[0]; s=v["snippet"]
+print(json.dumps({"id":v["id"],"judul":s["title"],"channel":s["channelTitle"],"channel_id":s["channelId"],
+ "tanggal":s["publishedAt"],"durasi":v["contentDetails"]["duration"],
+ "views":v.get("statistics",{}).get("viewCount"),"live":s.get("liveBroadcastContent")},ensure_ascii=False,indent=1))'
+    echo "YOUTUBE: tidak bisa diunduh dari cloud. Minta pengguna merekam momennya lalu kirim link Google Drive." >&2
+    exit 2 ;;
+  *drive.google.com/drive/folders/*|*drive.google.com/drive/u/*/folders/*)
+    fid="$(echo "$URL" | sed -n 's#.*/folders/\([A-Za-z0-9_-]*\).*#\1#p')"
+    dir="${2:-$ROOT/hasil-klip/$fid}"
+    uvx --quiet gdown --folder --json "$URL" | python3 -c 'import sys,json,re
+for e in json.load(sys.stdin):
+  m=re.search(r"(?:[?&]id=|/d/)([A-Za-z0-9_-]+)", e.get("url",""))
+  if m and re.search(r"\.(mp4|mov|mkv|webm|m4v)$", e.get("path",""), re.I): print(m.group(1))' |
+      while read -r id; do unduh_drive "$id" "$dir"; done ;;
+  *drive.google.com*|*drive.usercontent.google.com*|*docs.google.com*)
+    id="$(echo "$URL" | sed -n -e 's#.*/d/\([A-Za-z0-9_-]*\).*#\1#p' -e 's#.*[?&]id=\([A-Za-z0-9_-]*\).*#\1#p' | head -1)"
+    [ -n "$id" ] || { echo "ID file Drive tidak terbaca dari link" >&2; exit 1; }
+    unduh_drive "$id" "${2:-$ROOT/hasil-klip/$id}" ;;
+  *) echo "Link tidak dikenali (dukung: Google Drive, YouTube)" >&2; exit 1 ;;
+esac
