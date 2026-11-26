@@ -8,7 +8,7 @@ description: Editor klip streaming Windah Basudara main GTA VI. Pengguna mengiri
 Rekaman layar masuk, editan siap posting keluar. `SKILL` = folder file ini. Perintah:
 
 ```bash
-bash SKILL/scripts/ambil-link URL                          # unduh link Google Drive / info link YouTube (lihat Mode otomatis)
+bash SKILL/scripts/ambil-link URL [FOLDER] [MULAI-SELESAI] # unduh link YouTube (yt-dlp) / Google Drive (lihat Mode otomatis)
 bash SKILL/scripts/klip-windah analisis VIDEO --transkrip   # info, lembar frame bergrid, usulan cam, puncak suara, transkrip
 bash SKILL/scripts/klip-windah pratinjau RENCANA.json       # gambar diam beberapa detik: cek crop SEBELUM render
 bash SKILL/scripts/klip-windah render RENCANA.json          # MP4 1080x1920, 30 fps, -14 LUFS
@@ -40,11 +40,17 @@ pengguna bisa minta revisi. Tetap tanya HANYA bila buntu (tidak ada gameplay GTA
 
 1. **Ambil**: `bash SKILL/scripts/ambil-link URL` (cetak path file hasil unduhan; folder Drive = semua video).
    - Drive: file/folder harus dibagikan "Siapa saja yang memiliki link". Gagal HTML = minta pengguna ubah akses.
-   - **YouTube: tidak bisa diunduh** dari cloud (YouTube meminta "Sign in to confirm you're not a bot"; jangan
-     mencoba mengakalinya - cookie, ganti player client, proxy). Skrip mencetak info video via YouTube Data API
-     lalu keluar kode 2. Laporkan judul/channel/durasi, cek channel resmi Windah, lalu minta pengguna merekam
-     bagian yang diinginkan (buffer -20/+40 detik) dan mengirim link Drive-nya. Untuk VOD panjang, berikan
-     prompt `prompt/pencari-momen.md` dengan link itu agar AI pengguna mencari kandidat timestamp.
+   - **YouTube** (cara utama pengguna): skrip mengunduh dengan `yt-dlp` (maks 1080p, mp4). Ini **berhasil di
+     laptop pengguna** (sesi Claude Code yang berjalan di LAPTOP-914DTFLG, folder `P:\klip-windah`, lewat
+     Remote Control; yt-dlp, ffmpeg, uv sudah terpasang di sana). Cek channel resmi Windah (judul/uploader).
+     - Link ber-timestamp (`&t=4980s`, `?t=1h23m`) -> otomatis bagian t-30 s.d. t+90 detik.
+     - VOD > 30 menit / live tanpa timestamp -> kode 3: minta pengguna menyebut menit momennya atau kirim link
+       ber-timestamp (tombol Bagikan -> "Mulai pada"). Bagian manual: `ambil-link URL '' 1:23:00-1:26:00`.
+       Untuk mencari menitnya, berikan prompt `prompt/pencari-momen.md` agar AI pengguna mencari kandidat.
+     - **Di server cloud diblokir** ("Sign in to confirm you're not a bot") -> kode 2 + info video via YouTube
+       Data API. Jangan mengakalinya (cookie, ganti player client, proxy); sarankan menjalankan sesi di laptop
+       pengguna (Claude app -> Code -> sesi baru -> LAPTOP-914DTFLG / klip-windah).
+     - Unduh hanya video yang boleh diklip (program clipper resmi Windah / channel pengguna sendiri).
 2. **Analisis**: `analisis VIDEO --transkrip`, lihat `lembar.jpg`, tentukan `stream_box`, `cam_box`, gangguan.
 3. **Pilih momen sendiri** (15-60 dtk, TikTok; video < 75 dtk = pakai hampir utuh): beri skor kandidat dari
    transkrip + `puncak_suara` + lonjakan beda frame memakai prioritas di `prompt/pencari-momen.md`

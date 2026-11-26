@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-# ambil-link URL [FOLDER]
+# ambil-link URL [FOLDER] [MULAI-SELESAI]
 # Link Google Drive (file)  -> unduh ke FOLDER (bawaan hasil-klip/<id>/), cetak path file.
 # Link Google Drive (folder)-> daftar file (uvx gdown --folder), unduh semua video.
-# Link YouTube              -> TIDAK bisa diunduh dari cloud (cek bot YouTube). Cetak info video
-#                              lewat YouTube Data API (judul, channel, durasi) lalu keluar kode 2.
+# Link YouTube              -> unduh dengan yt-dlp (jalan di komputer pengguna; di server cloud diblokir
+#                              cek bot YouTube -> cetak info via YouTube Data API, keluar kode 2).
+#   ambil-link URL_YOUTUBE [FOLDER] [MULAI-SELESAI]   bagian VOD, mis. 1:23:00-1:26:00
+#   Link ber-timestamp (&t=4980s) tanpa bagian -> otomatis ambil t-30 s.d. t+90 detik.
+#   Video > 30 menit tanpa bagian/timestamp -> keluar kode 3 (minta bagian).
 set -euo pipefail
 URL="${1:?pakai: ambil-link URL [FOLDER]}"
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+PY="$(command -v python3 || command -v python || echo python3)"   # Windows (Git Bash) sering hanya punya "python"
 
 unduh_drive() { # ID FOLDER
   local id="$1" dir="$2" tmp name
@@ -29,28 +33,60 @@ unduh_drive() { # ID FOLDER
 
 case "$URL" in
   *youtube.com*|*youtu.be*)
-    id="$(python3 -c 'import sys,re,urllib.parse as u
-s=sys.argv[1]; p=u.urlparse(s)
-if "youtu.be" in p.netloc: print(p.path.strip("/").split("/")[0])
+    # 1) yt-dlp (berhasil di komputer pengguna / IP rumah; di server cloud diblokir cek bot YouTube).
+    # 2) Gagal -> cetak info video lewat YouTube Data API, keluar kode 2.
+    read -r id t < <("$PY" -c 'import sys,re,urllib.parse as u
+s=sys.argv[1]; p=u.urlparse(s); q=u.parse_qs(p.query)
+if "youtu.be" in p.netloc: i=p.path.strip("/").split("/")[0]
 else:
-  q=u.parse_qs(p.query).get("v")
   m=re.search(r"/(shorts|live|embed)/([\w-]{11})", p.path)
-  print(q[0] if q else (m.group(2) if m else ""))' "$URL")"
-    [ -n "$id" ] || { echo "ID video YouTube tidak terbaca dari link" >&2; exit 1; }
+  i=q["v"][0] if "v" in q else (m.group(2) if m else "")
+t=(q.get("t") or q.get("start") or ["0"])[0]
+h=re.fullmatch(r"(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?", t) or None
+sec=int(h.group(1) or 0)*3600+int(h.group(2) or 0)*60+int(h.group(3) or 0) if h else 0
+print(i or "-", sec)' "$URL")
+    [ "$id" != "-" ] || { echo "ID video YouTube tidak terbaca dari link" >&2; exit 1; }
+    dir="${2:-$ROOT/hasil-klip/yt-$id}"
+    BAGIAN="${3:-}"   # opsional "MULAI-SELESAI" (detik atau h:mm:ss), mis. 1:23:00-1:26:00
+    if [ -z "$BAGIAN" ] && [ "$t" -gt 0 ]; then   # link ber-timestamp: ambil -30/+90 detik
+      BAGIAN="$(( t > 30 ? t - 30 : 0 ))-$(( t + 90 ))"
+    fi
+    if command -v yt-dlp >/dev/null 2>&1; then
+      mkdir -p "$dir"
+      opsi=(-f "bv*[height<=1080]+ba/b[height<=1080]/b" --merge-output-format mp4 --no-playlist
+            -o "$dir/%(id)s%(section_start|)s.%(ext)s" --print after_move:filepath --no-simulate -q --no-warnings)
+      if [ -n "$BAGIAN" ]; then
+        opsi+=(--download-sections "*$BAGIAN" --force-keyframes-at-cuts)
+      else
+        opsi+=(--match-filter "duration < 1800 & !is_live")   # VOD panjang wajib pakai BAGIAN / link ber-timestamp
+      fi
+      if out="$(yt-dlp "${opsi[@]}" "https://www.youtube.com/watch?v=$id" 2>"$dir/.yt-dlp.log")" && [ -n "$out" ]; then
+        rm -f "$dir/.yt-dlp.log"; echo "$out"; exit 0
+      fi
+      if [ -z "$BAGIAN" ] && ! grep -qi "error" "$dir/.yt-dlp.log"; then   # dilewati match-filter
+        echo "VIDEO PANJANG (>30 menit/live): beri bagian, mis. ambil-link URL '' 1:23:00-1:26:00, atau link ber-timestamp (&t=)." >&2
+        exit 3
+      fi
+      echo "yt-dlp gagal:" >&2; tail -3 "$dir/.yt-dlp.log" >&2
+    else
+      echo "yt-dlp tidak terpasang." >&2
+    fi
     curl -s "https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=$id" |
-      python3 -c 'import sys,json
-d=json.load(sys.stdin).get("items") or []
+      "$PY" -c 'import sys,json
+try: d=json.load(sys.stdin).get("items") or []
+except Exception: d=None
+if d is None: print("(info video tidak tersedia: YouTube Data API tidak terjangkau tanpa API key)"); sys.exit(0)
 if not d: print("Video tidak ditemukan / privat"); sys.exit(0)
 v=d[0]; s=v["snippet"]
 print(json.dumps({"id":v["id"],"judul":s["title"],"channel":s["channelTitle"],"channel_id":s["channelId"],
  "tanggal":s["publishedAt"],"durasi":v["contentDetails"]["duration"],
  "views":v.get("statistics",{}).get("viewCount"),"live":s.get("liveBroadcastContent")},ensure_ascii=False,indent=1))'
-    echo "YOUTUBE: tidak bisa diunduh dari cloud. Minta pengguna merekam momennya lalu kirim link Google Drive." >&2
+    echo "YOUTUBE: tidak bisa diunduh di mesin ini (server cloud diblokir YouTube). Jalankan sesi di komputer pengguna (Remote Control), atau minta rekaman lewat Google Drive." >&2
     exit 2 ;;
   *drive.google.com/drive/folders/*|*drive.google.com/drive/u/*/folders/*)
     fid="$(echo "$URL" | sed -n 's#.*/folders/\([A-Za-z0-9_-]*\).*#\1#p')"
     dir="${2:-$ROOT/hasil-klip/$fid}"
-    uvx --quiet gdown --folder --json "$URL" | python3 -c 'import sys,json,re
+    uvx --quiet gdown --folder --json "$URL" | "$PY" -c 'import sys,json,re
 for e in json.load(sys.stdin):
   m=re.search(r"(?:[?&]id=|/d/)([A-Za-z0-9_-]+)", e.get("url",""))
   if m and re.search(r"\.(mp4|mov|mkv|webm|m4v)$", e.get("path",""), re.I): print(m.group(1))' |
