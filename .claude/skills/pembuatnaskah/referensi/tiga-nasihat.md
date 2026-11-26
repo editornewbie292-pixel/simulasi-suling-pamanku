@@ -1,6 +1,6 @@
 # Referensi: "Tiga Nasihat" (video animasi 16:9, 9:27, ~1.184 kata narasi)
 
-Dianalisis 26 Nov 2026 dari video kiriman pengguna. Ringkasan beat + teknik saja - JANGAN disalin ke naskah baru.
+Dianalisis 26 Nov 2026 dari video kiriman pengguna. Satu CONTOH bentuk, bukan cetakan - alasan kenapa digemari ada di SKILL.md. Jangan disalin.
 Adaptasi dongeng rakyat "tiga nasihat" ke kampung pesisir Jawa zaman dulu.
 
 Tokoh: Jumadi (perantau), Lastri (istri), Juragan Harun (pemilik gudang beras, bijak, sedikit bicara),
