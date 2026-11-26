@@ -1,6 +1,6 @@
 ---
 name: klip-windah
-description: Editor klip streaming Windah Basudara main GTA VI. Pengguna mengirim rekaman layar potongan stream, Claude menganalisis, bertanya seperlunya (posisi cam, format, momen), lalu merender editan siap posting - format TikTok 9:16 (split gameplay + cam besar, kotak judul hook ungu-pink, glitch, speed lines anime, impact, SFX) atau format kotak (frame stream utuh dengan cam asli di tengah latar hitam, caption punchline statis, punch-in ke wajah). Tanpa voice-over - murni momen. Pakai setiap kali pengguna mengirim rekaman/klip Windah atau GTA VI dan minta diedit, "bikin editan", "edit klip ini", "jadikan tiktok", "bikin versi 1:1/kotak".
+description: Editor klip streaming Windah Basudara main GTA VI. Pengguna mengirim rekaman layar potongan stream, Claude menganalisis, bertanya seperlunya (posisi cam, format, momen), lalu merender editan siap posting - format TikTok 9:16 (split gameplay + cam besar, kotak judul hook ungu-pink, glitch, speed lines anime, impact, SFX) atau format kotak (frame stream utuh dengan cam asli di tengah latar hitam, caption punchline statis, punch-in ke wajah). Tanpa voice-over - murni momen. Pakai setiap kali pengguna mengirim rekaman/klip Windah atau GTA VI dan minta diedit, atau hanya mengirim LINK Google Drive/YouTube (mode otomatis: cari momen, potong, edit sendiri tanpa bertanya), "bikin editan", "edit klip ini", "jadikan tiktok", "bikin versi 1:1/kotak".
 ---
 
 # klip-windah
@@ -8,6 +8,7 @@ description: Editor klip streaming Windah Basudara main GTA VI. Pengguna mengiri
 Rekaman layar masuk, editan siap posting keluar. `SKILL` = folder file ini. Perintah:
 
 ```bash
+bash SKILL/scripts/ambil-link URL [FOLDER] [MULAI-SELESAI] # unduh link YouTube (yt-dlp) / Google Drive (lihat Mode otomatis)
 bash SKILL/scripts/klip-windah analisis VIDEO --transkrip   # info, lembar frame bergrid, usulan cam, puncak suara, transkrip
 bash SKILL/scripts/klip-windah pratinjau RENCANA.json       # gambar diam beberapa detik: cek crop SEBELUM render
 bash SKILL/scripts/klip-windah render RENCANA.json          # MP4 1080x1920, 30 fps, -14 LUFS
@@ -30,6 +31,40 @@ Butuh `uv` dan `ffmpeg`. Pertama kali, uv memasang paket Python sendiri; transkr
    dikirim ada di `assets/data/streamcharts.json` (+ screenshot aslinya); tambahkan entri baru bila pengguna
    mengirim data baru, selalu dengan tanggal. Contoh: 18 Nov 2026 Windah **#1 dunia** peak viewers GTA VI
    (392.505), di atas IShowSpeed (371.840). Selalu sebut tanggal datanya bila dipakai di video.
+
+## Mode otomatis: pengguna hanya mengirim LINK (permintaan pengguna 26 Nov 2026)
+Bila pesan pengguna berisi link (Google Drive / YouTube) tanpa instruksi lain, kerjakan SENDIRI sampai jadi:
+cari momen menarik -> potong -> edit sesuai gaya skill ini -> kirim. **Jangan tanya apa pun sebelum render**
+(langkah 3 "Tanya pengguna" dilewati); semua pilihan diputuskan Claude lalu disebutkan di ringkasan agar
+pengguna bisa minta revisi. Tetap tanya HANYA bila buntu (tidak ada gameplay GTA VI/Windah, file rusak).
+
+1. **Ambil**: `bash SKILL/scripts/ambil-link URL` (cetak path file hasil unduhan; folder Drive = semua video).
+   - Drive: file/folder harus dibagikan "Siapa saja yang memiliki link". Gagal HTML = minta pengguna ubah akses.
+   - **YouTube** (cara utama pengguna): skrip mengunduh dengan `yt-dlp` (maks 1080p, mp4). Ini **berhasil di
+     laptop pengguna** (sesi Claude Code yang berjalan di LAPTOP-914DTFLG, folder `P:\klip-windah`, lewat
+     Remote Control; yt-dlp, ffmpeg, uv sudah terpasang di sana). Cek channel resmi Windah (judul/uploader).
+     - Link ber-timestamp (`&t=4980s`, `?t=1h23m`) -> otomatis bagian t-30 s.d. t+90 detik.
+     - VOD > 30 menit / live tanpa timestamp -> kode 3: minta pengguna menyebut menit momennya atau kirim link
+       ber-timestamp (tombol Bagikan -> "Mulai pada"). Bagian manual: `ambil-link URL '' 1:23:00-1:26:00`.
+       Untuk mencari menitnya, berikan prompt `prompt/pencari-momen.md` agar AI pengguna mencari kandidat.
+     - **Di server cloud diblokir** ("Sign in to confirm you're not a bot") -> kode 2 + info video via YouTube
+       Data API. Jangan mengakalinya (cookie, ganti player client, proxy); sarankan menjalankan sesi di laptop
+       pengguna (Claude app -> Code -> sesi baru -> LAPTOP-914DTFLG / klip-windah).
+     - Unduh hanya video yang boleh diklip (program clipper resmi Windah / channel pengguna sendiri).
+2. **Analisis**: `analisis VIDEO --transkrip`, lihat `lembar.jpg`, tentukan `stream_box`, `cam_box`, gangguan.
+3. **Pilih momen sendiri** (15-60 dtk, TikTok; video < 75 dtk = pakai hampir utuh): beri skor kandidat dari
+   transkrip + `puncak_suara` + lonjakan beda frame memakai prioritas di `prompt/pencari-momen.md`
+   (ekspektasi vs realita > panik/teriak > pertama/rekor > takjub > lucu > emosional). Potong dari
+   setup/sesumbar sampai punchline + 1-2 dtk reaksi; buang jeda kosong (`buang`). Rekaman berisi beberapa momen
+   kuat = buat maks 3 klip terpisah (`1_...`, `2_...`).
+4. **Default keputusan** (tanpa tanya): format `tiktok`; `posisi_cam` = sisi yang membuat wajah terlihat paling
+   utuh di pratinjau (bawaan `"bawah"`); `hook` kartu + `"caption_frasa": true` (koreksi file caption!);
+   1 `impact` di puncak, `speedlines` tipis saat ketegangan + tebal di puncak, `glitch` di sambungan `buang`;
+   teks hook = pilihan terkuat dari pola hook; SFX hanya dari `sfx/` pengguna atau bawaan (jangan memilih dari
+   `aset/`); tanpa musik/LUT kecuali pengguna pernah memintanya untuk klip ini; tanpa `camhd` (lambat).
+5. **Pratinjau -> betulkan -> render -> cek frame** seperti alur biasa (wajib, jangan dilewati).
+6. **Kirim** `*_upload.mp4` + ringkasan: rentang sumber yang dipakai dan alasannya, posisi cam, teks hook +
+   2 alternatif, efek di detik berapa, saran judul postingan + hashtag. Tawarkan revisi dan versi kotak/camhd.
 
 ## Alur kerja (ikuti urutannya)
 - **Cam HD (upscale AI)**: `camhd RENCANA.json` membuat `<rencana>_camhd.mp4` (Real-ESRGAN General x4v3 ONNX,
