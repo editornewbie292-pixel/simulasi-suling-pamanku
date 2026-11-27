@@ -10,7 +10,7 @@
 set -euo pipefail
 URL="${1:?pakai: ambil-link URL [FOLDER]}"
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-PY="$(command -v python3 || command -v python || echo python3)"   # Windows (Git Bash) sering hanya punya "python"
+PY=python3; for c in python3 python py; do "$c" -c "" >/dev/null 2>&1 && { PY="$c"; break; }; done   # Windows: python3 bisa berupa alias Microsoft Store yang tidak jalan
 
 unduh_drive() { # ID FOLDER
   local id="$1" dir="$2" tmp name
@@ -61,7 +61,15 @@ print(i or "-", sec)' "$URL")
         opsi+=(--match-filter "duration < 1800 & !is_live")   # VOD panjang wajib pakai BAGIAN / link ber-timestamp
       fi
       if out="$(yt-dlp "${opsi[@]}" "https://www.youtube.com/watch?v=$id" 2>"$dir/.yt-dlp.log")" && [ -n "$out" ]; then
-        rm -f "$dir/.yt-dlp.log"; echo "$out"; exit 0
+        rm -f "$dir/.yt-dlp.log"
+        # unduhan bagian VOD live kadang audionya terpotong (26 Nov 2026: video 320 dtk, audio 57 dtk)
+        while read -r f; do
+          va="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f" 2>/dev/null)"
+          aa="$(ffprobe -v error -select_streams a:0 -show_entries stream=duration -of csv=p=0 "$f" 2>/dev/null)"
+          "$PY" -c 'import sys;v,a=(float(x or 0) for x in sys.argv[1:]);sys.exit(0 if a>=v*0.95 else 1)' "$va" "$aa" ||
+            echo "PERINGATAN: audio $f hanya ${aa:-0} dtk dari ${va} dtk. Unduh ulang audio saja (yt-dlp -f ba --download-sections, rentang +-10 dtk), selaraskan dengan korelasi silang ke audio yang ada, lalu mux (-c:v copy)." >&2
+        done <<< "$out"
+        echo "$out"; exit 0
       fi
       if [ -z "$BAGIAN" ] && ! grep -qi "error" "$dir/.yt-dlp.log"; then   # dilewati match-filter
         echo "VIDEO PANJANG (>30 menit/live): beri bagian, mis. ambil-link URL '' 1:23:00-1:26:00, atau link ber-timestamp (&t=)." >&2

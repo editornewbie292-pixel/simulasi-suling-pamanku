@@ -528,7 +528,8 @@ def bangun(rencana, tmp, pratinjau=None):
     # tutup: buramkan area sumber (notifikasi ponsel, UI) [x, y, w, h, mulai, selesai]
     for k, (x, y, w, h, a, b) in enumerate(rencana.get("tutup", [])):
         x, y, w, h = map(even, (x, y, w, h))
-        f.append(f"[{pre}]split[tm{k}][tc{k}];[tc{k}]crop={w}:{h}:{x}:{y},boxblur=24:3[tb{k}];"
+        r = max(1, min(24, min(w, h) // 4 - 1))  # boxblur: radius chroma harus < min(w,h)/4
+        f.append(f"[{pre}]split[tm{k}][tc{k}];[tc{k}]crop={w}:{h}:{x}:{y},boxblur={r}:3[tb{k}];"
                  f"[tm{k}][tb{k}]overlay={x}:{y}:enable='between(t,{a:.3f},{b:.3f})'[pre{k + 1}]")
         pre = f"pre{k + 1}"
     if butuh > 1:
