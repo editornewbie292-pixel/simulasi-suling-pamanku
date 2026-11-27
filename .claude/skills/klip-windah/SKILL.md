@@ -57,6 +57,13 @@ pengguna bisa minta revisi. Tetap tanya HANYA bila buntu (tidak ada gameplay GTA
    (ekspektasi vs realita > panik/teriak > pertama/rekor > takjub > lucu > emosional). Potong dari
    setup/sesumbar sampai punchline + 1-2 dtk reaksi; buang jeda kosong (`buang`). Rekaman berisi beberapa momen
    kuat = buat maks 3 klip terpisah (`1_...`, `2_...`).
+   - **Momen UTUH, mulai dari AWAL kejadian** (permintaan pengguna 27 Nov 2026): penonton yang tidak menonton
+     stream harus langsung paham konteksnya - apa yang sedang dilakukan dan kenapa. Contoh: klip rampok bank mulai
+     saat tiba/masuk bank (atau kalimat niatnya, mis. "next target", "gua gak PD rampok bank"), BUKAN di depan
+     brankas. Cari titik awal dengan mundur dari puncak sampai ketemu pemicunya (tiba di lokasi, misi dimulai,
+     kalimat niat/sesumbar), lalu cek frame-nya. Bila jadi > 60 dtk, PADATKAN bagian tengah dengan `buang`
+     (jalan kaki, menunggu, menu, diam) - jangan memotong awal atau akhirnya. Sebutkan titik awal + alasannya
+     di ringkasan.
 4. **Default keputusan** (tanpa tanya): format `tiktok`; `posisi_cam` = sisi yang membuat wajah terlihat paling
    utuh di pratinjau (bawaan `"bawah"`); `hook` kartu + `"caption_frasa": true` (koreksi file caption!);
    1 `impact` di puncak, `speedlines` tipis saat ketegangan + tebal di puncak, `glitch` di sambungan `buang`;
@@ -148,8 +155,9 @@ pengguna bisa minta revisi. Tetap tanya HANYA bila buntu (tidak ada gameplay GTA
   kotak gelap, tepi gradasi ungu ke pink. Pola kalimat referensi:
   "BANG WINDAH BASUDARA JADI ORANG PERTAMA YANG DAPET IKAN DI GTA 6" - sebut Windah, klaim
   superlatif/pertama/rekor atau kejadian lucu, sebut GTA 6, maksimal sekitar 12 kata, 2-3 baris, bahasa gaul.
-- **Mulai di tengah aksi** dengan kalimat Windah yang memancing rasa penasaran; durasi sekitar 30-60 detik dengan
-  alur: setup -> ketegangan -> puncak -> penutup lucu. Tidak ada caption per kata.
+- **Mulai dari awal kejadian** (bukan di tengah aksi) supaya penonton paham konteksnya; bagian awal boleh
+  langsung dibuka dengan kalimat Windah yang memancing rasa penasaran. Durasi sekitar 30-60 detik dengan
+  alur: setup -> ketegangan -> puncak -> penutup lucu; padatkan bagian tengah dengan `buang`. Tidak ada caption per kata.
 - **Efek**:
   - `glitch` (detik): pecah warna RGB + noise 0,3 detik + SFX glitch. Untuk lompatan/potongan, dan sekali saat
     judul hilang (sekitar `judul_durasi` - 0,2) bila ingin persis referensi.

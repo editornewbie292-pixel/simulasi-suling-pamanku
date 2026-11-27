@@ -31,6 +31,9 @@ CARI MOMEN dari pola transkrip berikut (prioritas dari atas):
 
 SYARAT: hanya stream GTA VI channel resmi Windah Basudara; abaikan menu, loading,
 dan iklan; momen 15–60 detik dari pemicu sampai punchline.
+MOMEN UTUH: "awal_kejadian" = titik penonton baru paham konteksnya (tiba di lokasi,
+misi/aksi dimulai, kalimat niat atau sesumbar Windah), BUKAN di tengah aksi. Mundur
+dari pemicu sampai ketemu awal itu, walau lebih dari 20 detik sebelumnya.
 
 OUTPUT: tabel ringkas, lalu JSON persis dengan skema ini:
 {
@@ -44,7 +47,8 @@ OUTPUT: tabel ringkas, lalu JSON persis dengan skema ini:
       "id": 1,
       "kategori": "ekspektasi_realita | panik | pertama | takjub | lucu | emosional",
       "pemicu": "hh:mm:ss",
-      "rekam_mulai": "hh:mm:ss (pemicu - 20 detik)",
+      "awal_kejadian": "hh:mm:ss (tiba di lokasi / misi dimulai / kalimat niat)",
+      "rekam_mulai": "hh:mm:ss (awal_kejadian - 10 detik)",
       "rekam_selesai": "hh:mm:ss (pemicu + 40 detik)",
       "kutipan": "ucapan Windah persis dari transkrip",
       "dugaan_kejadian": "apa yang kemungkinan terjadi di game (tandai 'dugaan')",
