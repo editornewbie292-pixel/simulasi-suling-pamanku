@@ -62,11 +62,17 @@ print(i or "-", sec)' "$URL")
       fi
       if out="$(yt-dlp "${opsi[@]}" "https://www.youtube.com/watch?v=$id" 2>"$dir/.yt-dlp.log")" && [ -n "$out" ]; then
         rm -f "$dir/.yt-dlp.log"
+        out="${out//$''/}"   # Windows: keluaran yt-dlp/ffprobe berakhiran CRLF
         # unduhan bagian VOD live kadang audionya terpotong (26 Nov 2026: video 320 dtk, audio 57 dtk)
         while read -r f; do
+          [ -n "$f" ] || continue
           va="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f" 2>/dev/null)"
           aa="$(ffprobe -v error -select_streams a:0 -show_entries stream=duration -of csv=p=0 "$f" 2>/dev/null)"
-          "$PY" -c 'import sys;v,a=(float(x or 0) for x in sys.argv[1:]);sys.exit(0 if a>=v*0.95 else 1)' "$va" "$aa" ||
+          "$PY" -c 'import sys
+def d(x):
+  try: return float(x.strip())
+  except ValueError: return 0.0
+v,a=map(d,sys.argv[1:]); sys.exit(0 if v<=0 or a>=v*0.95 else 1)' "$va" "$aa" ||
             echo "PERINGATAN: audio $f hanya ${aa:-0} dtk dari ${va} dtk. Unduh ulang audio saja (yt-dlp -f ba --download-sections, rentang +-10 dtk), selaraskan dengan korelasi silang ke audio yang ada, lalu mux (-c:v copy)." >&2
         done <<< "$out"
         echo "$out"; exit 0
