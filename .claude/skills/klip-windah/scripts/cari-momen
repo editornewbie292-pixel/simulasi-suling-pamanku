@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# cari-momen URL [FOLDER] [--top N]: pindai seluruh live Windah -> kandidat momen (lihat cari_momen.py)
+HERE="$(cd "$(dirname "$0")/.." && pwd)"
+URL="$1"; shift
+DIR="${1:-}"
+if [ -z "$DIR" ] || [[ "$DIR" == --* ]]; then
+  ID=$(echo "$URL" | sed -E 's#.*(v=|live/|youtu\.be/|shorts/)([A-Za-z0-9_-]{11}).*#\2#')
+  DIR="$HERE/../../../hasil-klip/cari-$ID"
+else
+  shift
+fi
+export PYTHONUTF8=1
+exec uv run --quiet --project "$HERE" python -I "$HERE/scripts/cari_momen.py" "$URL" "$DIR" "$@"

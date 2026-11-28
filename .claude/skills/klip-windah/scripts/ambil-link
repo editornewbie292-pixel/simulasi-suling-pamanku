@@ -73,7 +73,10 @@ def d(x):
   try: return float(x.strip())
   except ValueError: return 0.0
 v,a=map(d,sys.argv[1:]); sys.exit(0 if v<=0 or a>=v*0.95 else 1)' "$va" "$aa" ||
-            echo "PERINGATAN: audio $f hanya ${aa:-0} dtk dari ${va} dtk. Unduh ulang audio saja (yt-dlp -f ba --download-sections, rentang +-10 dtk), selaraskan dengan korelasi silang ke audio yang ada, lalu mux (-c:v copy)." >&2
+            { echo "PERINGATAN: audio $f hanya ${aa:-0} dtk dari ${va} dtk - menambal otomatis..." >&2
+              PYTHONUTF8=1 uv run --quiet --project "$(dirname "$0")/.." python -I "$(dirname "$0")/perbaiki_audio.py" \
+                "$f" "https://www.youtube.com/watch?v=$id" "$BAGIAN" >&2 ||
+                echo "GAGAL menambal audio $f - JANGAN dipakai sebelum audionya utuh (lihat perbaiki_audio.py)." >&2; }
         done <<< "$out"
         echo "$out"; exit 0
       fi

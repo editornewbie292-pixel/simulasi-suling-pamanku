@@ -1,5 +1,8 @@
 # Prompt untuk AI pencari momen milik pengguna
 
+> Penilaian akhir kandidat (oleh Claude) memakai skor 7 kolom di `prinsip-momen-fyp.md` §7 (≥10 prioritas,
+> 7-9 layak, ≤6 buang) dan lima tes di §8. Baca file itu sebelum memilih momen dari hasil JSON di bawah.
+
 Kemampuan AI pengguna (hasil uji 20 Nov 2026): membaca transkrip YouTube + timestamp (Bahasa Indonesia), meleset
 ±5-30 detik (VOD 10+ jam bisa 30-60 detik), visual jarang dianalisis pada VOD panjang, TIDAK bisa membaca live chat,
 TIDAK bisa memberi screenshot/MP4, optimal 1 link per giliran dan dipindai per segmen 3 jam.
