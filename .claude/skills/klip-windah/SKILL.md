@@ -8,7 +8,9 @@ description: Editor klip streaming Windah Basudara main GTA VI. Pengguna mengiri
 Rekaman layar masuk, editan siap posting keluar. `SKILL` = folder file ini. Perintah:
 
 ```bash
+bash SKILL/scripts/cari-momen URL [FOLDER] [--top 15]     # pindai SELURUH live/VOD -> kandidat momen (lihat "Cari momen di live panjang")
 bash SKILL/scripts/ambil-link URL [FOLDER] [MULAI-SELESAI] # unduh link YouTube (yt-dlp) / Google Drive (lihat Mode otomatis)
+python -I SKILL/scripts/kata_waktu.py LIVE.vtt MULAI SELESAI # waktu PER KATA (subtitle YouTube) -> titik potong rapi
 bash SKILL/scripts/klip-windah analisis VIDEO --transkrip   # info, lembar frame bergrid, usulan cam, puncak suara, transkrip
 bash SKILL/scripts/klip-windah pratinjau RENCANA.json       # gambar diam beberapa detik: cek crop SEBELUM render
 bash SKILL/scripts/klip-windah render RENCANA.json          # MP4 1080x1920, 30 fps, -14 LUFS
@@ -44,9 +46,10 @@ pengguna bisa minta revisi. Tetap tanya HANYA bila buntu (tidak ada gameplay GTA
      laptop pengguna** (sesi Claude Code yang berjalan di LAPTOP-914DTFLG, folder `P:\klip-windah`, lewat
      Remote Control; yt-dlp, ffmpeg, uv sudah terpasang di sana). Cek channel resmi Windah (judul/uploader).
      - Link ber-timestamp (`&t=4980s`, `?t=1h23m`) -> otomatis bagian t-30 s.d. t+90 detik.
-     - VOD > 30 menit / live tanpa timestamp -> kode 3: minta pengguna menyebut menit momennya atau kirim link
-       ber-timestamp (tombol Bagikan -> "Mulai pada"). Bagian manual: `ambil-link URL '' 1:23:00-1:26:00`.
-       Untuk mencari menitnya, berikan prompt `prompt/pencari-momen.md` agar AI pengguna mencari kandidat.
+     - VOD > 30 menit / live tanpa timestamp -> kode 3. Jalankan `cari-momen URL` (bagian "Cari momen di live
+       panjang" di bawah), beri pengguna daftar kandidat, lalu unduh bagian pilihannya:
+       `ambil-link URL '' 1:23:00-1:26:00`. Ini satu-satunya titik "tanya" di mode otomatis (pilihan pengguna
+       27 Nov 2026). Alternatif: pengguna menyebut menitnya sendiri / prompt `prompt/pencari-momen.md`.
      - **Di server cloud diblokir** ("Sign in to confirm you're not a bot") -> kode 2 + info video via YouTube
        Data API. Jangan mengakalinya (cookie, ganti player client, proxy); sarankan menjalankan sesi di laptop
        pengguna (Claude app -> Code -> sesi baru -> LAPTOP-914DTFLG / klip-windah).
@@ -55,7 +58,9 @@ pengguna bisa minta revisi. Tetap tanya HANYA bila buntu (tidak ada gameplay GTA
 3. **Pilih momen sendiri** (15-60 dtk, TikTok; video < 75 dtk = pakai hampir utuh): beri skor kandidat dari
    transkrip + `puncak_suara` + lonjakan beda frame memakai prioritas di `prompt/pencari-momen.md`
    (ekspektasi vs realita > panik/teriak > pertama/rekor > takjub > lucu > emosional). Potong dari
-   setup/sesumbar sampai punchline + 1-2 dtk reaksi; buang jeda kosong (`buang`). Rekaman berisi beberapa momen
+   setup/sesumbar sampai punchline + 1-2 dtk reaksi; buang jeda kosong (`buang`) - `analisis` memberi
+   `usul_buang_jeda` (sunyi >= 1,5 dtk, relatif rekaman): cek frame-nya, masukkan yang aman ke `buang`, dan
+   sebutkan di ringkasan. Rekaman berisi beberapa momen
    kuat = buat maks 3 klip terpisah (`1_...`, `2_...`).
    - **Momen UTUH, mulai dari AWAL kejadian** (permintaan pengguna 27 Nov 2026): penonton yang tidak menonton
      stream harus langsung paham konteksnya - apa yang sedang dilakukan dan kenapa. Contoh: klip rampok bank mulai
@@ -72,6 +77,67 @@ pengguna bisa minta revisi. Tetap tanya HANYA bila buntu (tidak ada gameplay GTA
 5. **Pratinjau -> betulkan -> render -> cek frame** seperti alur biasa (wajib, jangan dilewati).
 6. **Kirim** `*_upload.mp4` + ringkasan: rentang sumber yang dipakai dan alasannya, posisi cam, teks hook +
    2 alternatif, efek di detik berapa, saran judul postingan + hashtag. Tawarkan revisi dan versi kotak/camhd.
+
+## Cari momen di live panjang (`cari-momen`, ide dari Clips Kitty, dipilih pengguna 27 Nov 2026)
+**WAJIB baca `prompt/prinsip-momen-fyp.md` sebelum memilih momen (cari-momen) dan sebelum menyusun `buang`**:
+pilih dari layar + reaksi (bukan transkrip), mulai dari persiapan, simpan pembuktian, klip punchline 10-30 dtk vs
+klip misi 1-3 menit, skor kandidat 7 kolom (§7), dan lima tes sebelum render (§8).
+Untuk live/VOD Windah utuh (berjam-jam) tanpa menit yang disebut. Unduhannya ringan: audio kualitas rendah,
+subtitle otomatis `id`, chat replay (live 5 jam ~ 10-30 menit unduh, jalankan di background), info JSON (heatmap).
+Hasil di `hasil-klip/cari-<id>/`: `kandidat.json` + `timeline.txt`.
+1. **Sinyal per detik, relatif video itu sendiri (persentil)**: audio (lonjakan dB vs median 30 dtk + kepadatan
+   onset = tawa/teriak) 45%, chat (ledakan penulis unik vs 45 dtk sebelumnya, digeser 6 dtk karena chat telat)
+   40%, heatmap "paling sering diputar" 15% (bobot dibagi ulang bila chat/heatmap tidak ada). Kelas chat:
+   lucu (wkwk, KEKW, ngakak, kocak, 😂), epic (GG, gila, anjir, POG, keren), gagal (F, L, rip, 💀), sus (🤨, sus,
+   sensor, astagfirullah), minta klip (clip, klip, jadiin short). Ubah di `KELAS_CHAT` di `cari_momen.py`.
+2. **Dua kolam kandidat** (Claude = juri, tanpa AI lain): (a) puncak sinyal di `kandidat.json` (transkrip 90 dtk
+   sebelum s.d. 30 dtk sesudah puncak + contoh chat), dan (b) momen yang Claude temukan sendiri dari
+   `timeline.txt` (transkrip per menit bertanda `[SUARA]`, `[CHAT xN kelas]`, `[*]`) walau sinyalnya biasa -
+   ucapan kuat + sinyal kecil tetap bisa bagus. Subtitle otomatis sering salah dengar: nilai maknanya, bukan ejaan.
+3. **Skor 0-100 per kandidat**: prioritas pola #windahGTAVI (memori `pola-klip-windahgtavi`: kebiasaan Windah
+   kebongkar > sus/cewek > fail/tragedi lucu > bug > rekor/komunitas > mobil > nyindir), dinaikkan oleh sinyal
+   (teriak, chat meledak, kelas chat yang cocok). Energi tinggi tanpa isi (teriak di menu, chat spam) = skor rendah.
+   Wajib ada gameplay GTA VI; momen di menu/loading/ngobrol saja dibuang.
+4. **Rerank**: bandingkan 8-12 teratas SATU SAMA LAIN (mana yang lebih mungkin ramai), bukan skor absolut saja.
+5. **Tandai ⚠️** (jangan dibuang): adegan 18+/sensor, umpatan berat, spoiler cerita besar. Pengguna memutuskan.
+6. **Kirim ke pengguna 5-10 kandidat**: waktu SELALU ditulis lengkap "jam 3 menit 26 detik 40" selain
+   format 3:26:40 (pengguna 27 Nov 2026 salah baca "3:26" sebagai menit 3), menit awal-akhir (MOMEN UTUH: mundur ke awal kejadian), kategori, skor,
+   alasan 1 kalimat, sinyal pendukung (mis. "chat lucu x5, suara +11 dB"), tanda ⚠️. Setelah pengguna memilih:
+   `ambil-link URL '' MULAI-SELESAI` (beri buffer ±20 dtk), lalu alur biasa (analisis -> cek visual di lembar
+   + beda frame -> rencana -> render). Visual seluruh live TIDAK dianalisis (laptop RAM 7,6 GB) - hanya sekitar
+   kandidat terpilih. Simpan daftar juga sebagai `hasil-klip/cari-<id>/daftar_klip.md` dan kirim (SendUserFile).
+7. **Unduhan dipakai ulang**: folder `cari-<id>` (audio, chat, vtt) jangan diunduh dua kali; chat replay yang
+   masih `.part` sudah bisa dibaca (baris JSON terakhir terpotong dilewati) - pakai untuk daftar awal, lalu pindai
+   ulang saat chat lengkap dan perbarui daftarnya. Kuota: audio ±100 MB, chat 5 jam ±185 MB, bagian video 1080p60
+   ±45 MB/menit (unduhan per bagian lambat: ±2-3 menit per menit video). Semua lewat internet LAPTOP.
+
+## Alur klip dari live panjang (dipakai dan disetujui pengguna 27 Nov 2026, live #12)
+Urutan yang berhasil: `cari-momen` -> daftar kandidat -> pengguna memilih nomor -> **ajukan pertanyaan edit**
+(pengguna minta "beri saya pertanyaan" sebelum edit; tulis bernomor dengan pilihan a/b/c + saran, karena pengguna
+sering lewat Remote Control di HP dan kotak AskUserQuestion bisa tidak tampil) -> unduh semua bagian sekaligus di
+background (`ambil-link URL FOLDER/tmp_N MULAI-SELESAI`, buffer ±20 dtk, lalu ganti nama `N_nama.mp4`) -> kerjakan
+klip yang sudah terunduh sambil menunggu yang lain -> kirim semua SEKALIGUS di akhir (pilihan pengguna).
+0. **Audio terpotong** (27 Nov 2026: bagian salto audionya 90,7/110 dtk -> akhir klip sunyi, pengguna komplain):
+   `ambil-link` sekarang otomatis menambal lewat `scripts/perbaiki_audio.py` (unduh ulang audio saja ±15 dtk,
+   selaraskan dengan korelasi silang, mux `-c:v copy`, cadangan `*_audiopotong.mp4`). JANGAN buang stderr
+   `ambil-link` (`2>&1 | tail -1` menyembunyikan peringatannya) - baca semua keluarannya, dan sebelum edit cek
+   `ffprobe` durasi video vs audio tiap bagian. Setelah render, cek tidak ada detik sunyi (< -60 dB) di bagian
+   klip (endcard template memang hening di 1-2 dtk terakhir - abaikan).
+1. **Titik potong dari kata**: `kata_waktu.py live.id.vtt MULAI SELESAI` (MULAI = awal bagian yang diunduh, jadi
+   detiknya sama dengan file bagian). Pilih kalimat setup -> aksi -> punchline; potong di jeda antar-kalimat
+   (mis. keep 11.3-16.0 = satu kalimat utuh). Pengguna: "yang diem/gak penting dalam alur cut aja, tapi cutnya
+   harus rapi"; durasi menyesuaikan (hasil 28-62 dtk).
+2. **Cek visual tiap bagian**: lembar frame per 3-5 dtk (cerahkan dulu, rekaman malam gelap) + frame resolusi
+   penuh di sekitar puncak. Puncak aksi (tembakan, tabrakan) cari dengan puncak dB audio per 0,1 dtk lalu cek
+   frame. Buang menu/peta/loading kecuali memberi konteks (peta target bank boleh 1-2 dtk).
+3. **Rencana**: `buang` berisi semua yang bukan bagian keep (hitung timeline hasil untuk `impact`/`tutup`).
+   1 `impact` di puncak. Format pilihan pengguna: kotak 5:4 + `judul_putih` (lihat Gaya Kotak).
+4. **Sensor 18+** (pengguna: "langsung sensor", gaya mosaik, SEMUA yang terbuka termasuk NPC berbikini di latar):
+   `"tutup_gaya": "mosaik"`, `"mosaik_px": 36`, kotak `tutup` per sudut kamera (koordinat dari frame bergrid,
+   ingat crop kotak 5:4 hanya menampilkan x ±570-1920 bila cam di kanan). Adegan ketelanjangan penuh
+   (mis. syuting film dewasa di misi pool boy) DIBUANG total, bukan dimosaik. Kata kasar dibiarkan.
+5. **Render**: `render` mendekode seluruh rentang `potong` (60 fps), jadi bagian 7 menit = ±10-15 menit render;
+   render paralel boleh tapi saling memperlambat. Cek frame hasil (awal, impact, tengah, akhir + endcard).
 
 ## Alur kerja (ikuti urutannya)
 - **Cam HD (upscale AI)**: `camhd RENCANA.json` membuat `<rencana>_camhd.mp4` (Real-ESRGAN General x4v3 ONNX,
@@ -110,7 +176,7 @@ pengguna bisa minta revisi. Tetap tanya HANYA bila buntu (tidak ada gameplay GTA
   `curl -L -o NAMA "https://drive.usercontent.google.com/download?id=ID&export=download&confirm=t"`.
   Host drive.google.com, drive.usercontent.google.com, docs.google.com sudah diizinkan di environment.
 0. **Mencari bahan**: pengguna memakai AI pencari momen miliknya (berbasis transkrip YouTube). Prompt dan
-   cara membaca hasil JSON-nya ada di `prompt/pencari-momen.md`. Claude tidak bisa mengunduh dari YouTube.
+   cara membaca hasil JSON-nya ada di `prompt/pencari-momen.md`. Di laptop pengguna Claude bisa memindai sendiri dengan `cari-momen`.
 1. **Pengguna mengirim rekaman.** Upload ada di `~/.claude/uploads/...`. Salin ke folder kerja
    `hasil-klip/<nama-singkat>/` di repo ini (folder itu di-gitignore), jangan ubah file aslinya.
 2. **Analisis**: `analisis VIDEO --transkrip`. Lalu **lihat** `lembar.jpg` (Read): grid kuning menandai
@@ -205,6 +271,11 @@ pertama, kalimat hook bercerita kontras, caption di setiap ucapan, transisi flas
   "..", contoh referensi "salip aelah..". Putih kecil berbayang di tengah gambar (`caption_y` 0-1).
 - **Punch-in**: `cam_penuh` ke wajah saat tertawa/bereaksi, 1-3 detik. Boleh `impact` kecil di awal punch-in.
 - Pendek: sekitar 10-20 detik, satu lelucon.
+- **Panel judul putih** (pilihan pengguna 27 Nov 2026, "1:1 dengan atasnya ada tempat judul putih"):
+  `"judul_putih": "Ngaku skill rampok luar biasa, endingnya cuma dapet 13.000 💀"` = panel putih selebar layar
+  tepat DI ATAS gambar, teks hitam Anton rata tengah (maks 3 baris, emoji boleh), sepanjang klip (endcard tidak).
+  `"judul_putih_ukuran"` (bawaan 60). Pola kalimat: kontras sesumbar/niat vs hasil, 8-12 kata, gaul, 1 emoji
+  (😭/💀). Watermark tetap di dalam frame atas (`watermark_y` 586, `watermark_lebar` 520).
 - `endcard`: bawaannya file pertama di `assets/endcard/` (wajib, lihat Aturan program). `"endcard": "path"` untuk
   file lain. Jangan pernah membuat sendiri end card yang meniru branding program/merek mana pun.
 
@@ -259,9 +330,10 @@ lain (`glitch`, `impact`, `speedlines`, `cam_penuh`, `tutup`) memakai timeline *
 `zoom`: `[[mulai, selesai, x, y, w, h], ...]` punch-in panel game (TikTok) / gambar (kotak) ke area sumber -
 untuk kejadian di pinggir layar yang terpotong crop tengah (mis. pesawat jatuh di langit kanan atas). Hindari
 area cam asli di dalam kotak zoom. Lacak posisi objeknya dulu dengan crop frame per 0,5 detik.
-`tutup`: `[x, y, w, h, mulai, selesai]` area sumber yang diburamkan. Thumbnail: `fokus_cam_y` 0-1 menggeser wajah
+`tutup`: `[x, y, w, h, mulai, selesai(, "blur"|"mosaik")]` area sumber yang disensor; `"tutup_gaya"` = bawaan
+semua entri (`"blur"`), `"mosaik_px"` = besar kotak mosaik dalam piksel sumber (bawaan 28). Thumbnail: `fokus_cam_y` 0-1 menggeser wajah
 (besar = wajah naik), `fokus_game_x/y`, `zoom_game`, `zoom_cam`.
-Kotak: `"format": "kotak"`, `"rasio_kotak": 1.25`, `"caption": "salip aelah.."`, `"cam_penuh": [[9.0, 11.5]]`,
+Kotak: `"format": "kotak"`, `"rasio_kotak": 1.25`, `"judul_putih": "..."`, `"caption": "salip aelah.."`, `"cam_penuh": [[9.0, 11.5]]`,
 opsional `"endcard": "path/endcard.mp4"`. `game_box` kosong = tengah `stream_box` dengan rasio panel.
 
 ## Sebelum pengguna posting

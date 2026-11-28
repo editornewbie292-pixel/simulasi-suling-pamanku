@@ -169,6 +169,7 @@ def analisis(video, outdir, transkrip=False):
 
     # 4. puncak suara (teriak / momen heboh)
     puncak = []
+    usul_buang = []
     if info["audio"]:
         raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(video), "-ac", "1", "-ar", "16000",
                               "-f", "f32le", "-"], capture_output=True).stdout
@@ -186,9 +187,20 @@ def analisis(video, outdir, transkrip=False):
                 if len(puncak) >= 6:
                     break
             puncak.sort(key=lambda p: p["detik"])
+            # 4b. usulan buang: jeda sunyi >= 1,5 dtk (relatif rekaman ini, bukan dB tetap, karena
+            # suara game jarang benar-benar diam). Hanya USULAN - cek dulu sebelum masuk "buang".
+            sunyi = db < med - 12
+            mulai = None
+            for i, s in enumerate(list(sunyi) + [False]):
+                if s and mulai is None:
+                    mulai = i
+                elif not s and mulai is not None:
+                    if (i - mulai) * 0.5 >= 1.5:
+                        usul_buang.append([round(mulai * 0.5 + 0.25, 2), round(i * 0.5 - 0.25, 2)])
+                    mulai = None
 
     hasil = {"video": str(video), "info": info, "area_konten": konten,
-             "cam_usulan": usulan, "puncak_suara": puncak,
+             "cam_usulan": usulan, "puncak_suara": puncak, "usul_buang_jeda": usul_buang,
              "lembar": str(outdir / "lembar.jpg")}
 
     # 5. transkrip
@@ -309,6 +321,27 @@ def bungkus(teks, f, size, maxw):
     if len(baris) > 1 and all(e for _, e in potong_emoji(baris[-1].replace(" ", ""))):
         baris[-2] += " " + baris.pop()
     return baris
+
+
+def gambar_judul_putih(teks, path, size=60, pad_x=44, pad_y=26):
+    """Panel judul putih selebar layar di atas gambar kotak (permintaan pengguna 27 Nov 2026):
+    latar putih polos, teks hitam Anton rata tengah, maks 3 baris, emoji boleh."""
+    teks = teks.strip()
+    while True:
+        f = font(FONT_JUDUL, size, bold=False)
+        baris = bungkus(teks, f, size, W - 2 * pad_x)
+        if len(baris) <= 3 or size <= 40:
+            break
+        size -= 4
+    lh = int(size * 1.18)
+    tinggi = even(2 * pad_y + lh * len(baris))
+    img = Image.new("RGBA", (W, tinggi), (255, 255, 255, 255))
+    y = pad_y - int(size * 0.06)
+    for b in baris:
+        tulis(img, ((W - ukur(b, f, size)) / 2, y), b, f, size, fill=(10, 10, 10))
+        y += lh
+    img.save(path)
+    return img.size
 
 
 def gambar_judul(teks, sub, path, lebar=W - 80):
@@ -525,11 +558,21 @@ def bangun(rencana, tmp, pratinjau=None):
     else:
         f.append(f"[0:v]fps={FPS},setpts=PTS-STARTPTS{geser}{lut.replace('_X', 's')}[pre0]")
     pre = "pre0"
-    # tutup: buramkan area sumber (notifikasi ponsel, UI) [x, y, w, h, mulai, selesai]
-    for k, (x, y, w, h, a, b) in enumerate(rencana.get("tutup", [])):
+    # tutup: sensor area sumber [x, y, w, h, mulai, selesai] (+ opsional gaya "blur"|"mosaik").
+    # "tutup_gaya" mengatur bawaan semua entri. Mosaik = kotak-kotak `mosaik_px` piksel sumber (bawaan 28).
+    gaya0 = rencana.get("tutup_gaya", "blur")
+    mpx = int(rencana.get("mosaik_px", 28))
+    for k, t in enumerate(rencana.get("tutup", [])):
+        x, y, w, h, a, b = t[:6]
+        gaya = t[6] if len(t) > 6 else gaya0
         x, y, w, h = map(even, (x, y, w, h))
-        r = max(1, min(24, min(w, h) // 4 - 1))  # boxblur: radius chroma harus < min(w,h)/4
-        f.append(f"[{pre}]split[tm{k}][tc{k}];[tc{k}]crop={w}:{h}:{x}:{y},boxblur={r}:3[tb{k}];"
+        if gaya == "mosaik":
+            efek_t = (f"scale={max(1, w // mpx)}:{max(1, h // mpx)}:flags=area,"
+                      f"scale={w}:{h}:flags=neighbor")
+        else:
+            r = max(1, min(24, min(w, h) // 4 - 1))  # boxblur: radius chroma harus < min(w,h)/4
+            efek_t = f"boxblur={r}:3"
+        f.append(f"[{pre}]split[tm{k}][tc{k}];[tc{k}]crop={w}:{h}:{x}:{y},{efek_t}[tb{k}];"
                  f"[tm{k}][tb{k}]overlay={x}:{y}:enable='between(t,{a:.3f},{b:.3f})'[pre{k + 1}]")
         pre = f"pre{k + 1}"
     if butuh > 1:
@@ -671,6 +714,16 @@ def bangun(rencana, tmp, pratinjau=None):
         f.append(f"[{i}:v]format=rgba,fade=in:st=0:d=0.15:alpha=1,fade=out:st={max(0, jd - 0.3):.2f}:d=0.3:alpha=1[jud]")
         f.append(f"[{cur}][jud]overlay={jx}:{jy}:eof_action=pass[bj]")
         cur = "bj"
+
+    # judul putih statis tepat di atas gambar kotak (sepanjang klip, bukan di endcard)
+    if rencana.get("judul_putih") and fmt != "tiktok":
+        pw_, ph_ = gambar_judul_putih(rencana["judul_putih"], tmp / "judul_putih.png",
+                                      int(rencana.get("judul_putih_ukuran", 60)))
+        py_ = even(max(SAFE_ATAS, konten_y - ph_))
+        i = tambah("-loop", "1", "-framerate", str(FPS), "-t", f"{dur:.3f}", "-i", tmp / "judul_putih.png")
+        f.append(f"[{i}:v]format=rgba[jpt]")
+        f.append(f"[{cur}][jpt]overlay=0:{py_}:eof_action=pass[bjp]")
+        cur = "bjp"
 
     # caption punchline statis (gaya kotak)
     if rencana.get("caption"):
